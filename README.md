@@ -85,6 +85,11 @@ python examples/run_game.py
 
 # 测试 DeepSeek API 连接
 python examples/test_deepseek.py
+
+# 运行所有测试用例
+python run_tests.py
+# 或使用 Shell 脚本
+./run_tests.sh
 ```
 
 ## 文档
