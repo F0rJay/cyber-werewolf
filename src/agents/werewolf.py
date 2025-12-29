@@ -64,7 +64,7 @@ class WerewolfAgent(BaseAgent):
             发言内容
         """
         # 构建 prompt
-        from ...utils.prompt_builder import build_werewolf_discuss_prompt
+        from ..utils.prompt_builder import build_werewolf_discuss_prompt
         system_prompt, user_prompt = build_werewolf_discuss_prompt(
             self.agent_id,
             self.name,
@@ -105,7 +105,7 @@ class WerewolfAgent(BaseAgent):
             return None
         
         # 构建 prompt
-        from ...utils.prompt_builder import build_werewolf_vote_prompt
+        from ..utils.prompt_builder import build_werewolf_vote_prompt
         system_prompt, user_prompt = build_werewolf_vote_prompt(
             self.agent_id,
             self.name,
@@ -170,7 +170,7 @@ class WerewolfAgent(BaseAgent):
             是否自爆
         """
         # 构建 prompt
-        from ...utils.prompt_builder import build_werewolf_explode_prompt
+        from ..utils.prompt_builder import build_werewolf_explode_prompt
         system_prompt, user_prompt = build_werewolf_explode_prompt(
             self.agent_id,
             self.name,
