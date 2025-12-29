@@ -124,9 +124,21 @@ def create_game_graph() -> StateGraph:
         }
     )
     
-    # 警长竞选后的路由：正常竞选后投票，PK发言后也投票
-    def route_after_sheriff_campaign(state: GameState) -> Literal["sheriff_voting"]:
-        # 无论是正常竞选还是PK发言，都进入投票
+    # 警长竞选后的路由：正常竞选后投票，PK发言后也投票，没有候选人时直接公布出局
+    def route_after_sheriff_campaign(state: GameState) -> Literal["sheriff_voting", "announce_death"]:
+        # 检查是否是PK发言阶段（PK发言后应该进入第二轮投票）
+        sheriff_vote_round = state.get("sheriff_vote_round", 0)
+        sheriff_tied_candidates = state.get("sheriff_tied_candidates", [])
+        if sheriff_vote_round == 1 and sheriff_tied_candidates:
+            # PK发言后，进入第二轮投票
+            return "sheriff_voting"
+        
+        # 检查是否有候选人
+        candidates = state.get("sheriff_candidates", [])
+        if not candidates:
+            # 没有候选人，直接进入公布出局
+            return "announce_death"
+        # 有候选人，进入投票
         return "sheriff_voting"
     
     graph.add_conditional_edges(
@@ -134,15 +146,26 @@ def create_game_graph() -> StateGraph:
         route_after_sheriff_campaign,
         {
             "sheriff_voting": "sheriff_voting",
+            "announce_death": "announce_death",
         }
     )
     
     # 警长投票后的路由
     def route_after_sheriff_voting(state: GameState) -> Literal["announce_death", "sheriff_pk", "discussion"]:
+        # 检查是否有候选人（如果没有候选人，直接进入下一阶段）
+        candidates = state.get("sheriff_candidates", [])
+        sheriff_tied_candidates = state.get("sheriff_tied_candidates", [])
+        
+        # 如果既没有候选人也没有平票候选人，说明投票已完成或没有进行投票
+        if not candidates and not sheriff_tied_candidates:
+            day_number = state.get("day_number", 1)
+            if day_number == 1:
+                return "announce_death"
+            return "discussion"
+        
         day_number = state.get("day_number", 1)
         if day_number == 1:
             # 检查是否平票（检查是否有平票候选人，说明刚完成第一轮投票且平票）
-            sheriff_tied_candidates = state.get("sheriff_tied_candidates", [])
             sheriff_vote_round = state.get("sheriff_vote_round", 0)
             
             # 如果刚设置平票候选人（第一轮平票），进入PK发言
@@ -163,21 +186,9 @@ def create_game_graph() -> StateGraph:
         }
     )
     
-    # PK发言后进入第二轮投票
-    def route_after_sheriff_pk(state: GameState) -> Literal["sheriff_voting", "announce_death"]:
-        # PK发言完成后，直接进入第二轮投票
-        return "sheriff_voting"
-    
-    # 添加PK发言后的路由（复用sheriff_campaign节点，但需要特殊处理）
-    # 实际上，sheriff_campaign节点会检测是否是PK阶段，如果是就只进行PK发言
-    # PK发言后应该直接进入第二轮投票
-    graph.add_conditional_edges(
-        "sheriff_campaign",
-        lambda state: "sheriff_voting" if state.get("sheriff_vote_round") == 1 else "sheriff_voting",
-        {
-            "sheriff_voting": "sheriff_voting",
-        }
-    )
+    # 注意：PK发言复用sheriff_campaign节点
+    # sheriff_campaign节点会检测是否是PK阶段（通过sheriff_vote_round和sheriff_tied_candidates）
+    # PK发言后，route_after_sheriff_campaign会检测到有候选人，路由到sheriff_voting进行第二轮投票
     
     # 公布出局玩家后的路由
     graph.add_conditional_edges(

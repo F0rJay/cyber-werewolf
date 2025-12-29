@@ -491,7 +491,10 @@ async def sheriff_campaign_node(state: GameState) -> Dict[str, Any]:
             print(f"      💬 {content}")
             await asyncio.sleep(0.1)
         
-        return {}
+        # PK发言后，保持平票候选人状态，以便进入第二轮投票
+        return {
+            "sheriff_tied_candidates": sheriff_tied_candidates,  # 保持平票候选人
+        }
     
     # 正常警长竞选阶段
     print(f"\n👮 警长竞选阶段")
