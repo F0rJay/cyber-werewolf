@@ -10,14 +10,18 @@ def test_role_assignment():
     from src.utils.role_assigner import assign_roles
     
     player_names = ["玩家1", "玩家2", "玩家3", "玩家4"]
-    roles = assign_roles(player_names)
+    players = assign_roles(player_names)
     
-    assert len(roles) == len(player_names)
-    assert "werewolf" in roles.values()
+    assert len(players) == len(player_names)
+    # 检查是否有狼人
+    werewolves = [p for p in players if p.role == "werewolf"]
+    assert len(werewolves) > 0
     # 检查角色是否有效
     valid_roles = ["villager", "werewolf", "seer", "witch", "guard"]
-    for role in roles.values():
-        assert role in valid_roles
+    for player in players:
+        assert player.role in valid_roles
+        assert player.player_id > 0
+        assert player.is_alive == True
 
 
 def test_sheriff_election():
