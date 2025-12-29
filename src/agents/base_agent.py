@@ -63,7 +63,7 @@ class BaseAgent(ABC):
             发言内容
         """
         # 构建 prompt
-        from ...utils.prompt_builder import build_speak_prompt
+        from ..utils.prompt_builder import build_speak_prompt
         observation = await self.observe(game_state)
         system_prompt, user_prompt = build_speak_prompt(
             self.agent_id,
@@ -118,7 +118,7 @@ class BaseAgent(ABC):
             目标玩家ID，如果不投票则返回 None
         """
         # 构建 prompt
-        from ...utils.prompt_builder import build_vote_prompt
+        from ..utils.prompt_builder import build_vote_prompt
         observation = await self.observe(game_state)
         system_prompt, user_prompt = build_vote_prompt(
             self.agent_id,
@@ -199,7 +199,7 @@ class BaseAgent(ABC):
             遗言内容
         """
         # 构建 prompt
-        from ...utils.prompt_builder import build_last_words_prompt
+        from ..utils.prompt_builder import build_last_words_prompt
         observation = await self.observe(game_state)
         system_prompt, user_prompt = build_last_words_prompt(
             self.agent_id,
@@ -257,7 +257,7 @@ class BaseAgent(ABC):
             return None
         
         # 构建 prompt
-        from ...utils.prompt_builder import build_sheriff_transfer_prompt
+        from ..utils.prompt_builder import build_sheriff_transfer_prompt
         observation = await self.observe(game_state)
         system_prompt, user_prompt = build_sheriff_transfer_prompt(
             self.agent_id,
@@ -330,7 +330,7 @@ class BaseAgent(ABC):
             return True
         
         # 构建 prompt
-        from ...utils.prompt_builder import build_speaking_order_prompt
+        from ..utils.prompt_builder import build_speaking_order_prompt
         observation = await self.observe(game_state)
         system_prompt, user_prompt = build_speaking_order_prompt(
             self.agent_id,
