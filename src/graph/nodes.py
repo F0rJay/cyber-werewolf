@@ -354,11 +354,27 @@ async def announce_death_node(state: GameState) -> Dict[str, Any]:
     
     if killed_players:
         print("  出局玩家：")
+        last_words = state.get("last_words", {})
+        
         for pid in killed_players:
             player = next((p for p in state["players"] if p.player_id == pid), None)
             if player:
                 print(f"    ❌ {player.name} (玩家{pid}) - {player.role}")
-                # TODO: 选择发动技能、留下遗言
+                
+                # 只有第一天夜里出局的玩家有遗言
+                if day_number == 1:
+                    # 第一天夜里出局，有遗言
+                    from ..utils.agent_factory import create_agent_by_role
+                    agent = create_agent_by_role(player.player_id, player.name, player.role)
+                    last_word = await agent.leave_last_words(state, death_reason="night_first")
+                    last_words[pid] = last_word
+                    print(f"      💬 遗言: {last_word}")
+                else:
+                    # 其他天夜里出局，只能发动特殊技能，没有遗言
+                    print(f"      ⚠️  {player.name} 夜里出局，没有遗言（只能发动特殊技能）")
+                    # TODO: 实现特殊技能发动（如女巫毒药、守卫守护等）
+        
+        return {"last_words": last_words}
     else:
         print("  ✅ 平安夜（无人出局）")
     

@@ -182,4 +182,57 @@ class BaseAgent(ABC):
                 import random
                 return random.choice(other_players).player_id
             return None
+    
+    async def leave_last_words(
+        self,
+        game_state: Dict[str, Any],
+        death_reason: str = "exile"  # "night_first" 或 "exile"
+    ) -> str:
+        """
+        留下遗言
+        
+        Args:
+            game_state: 游戏状态
+            death_reason: 出局原因（"night_first"=第一天夜里出局, "exile"=被放逐）
+        
+        Returns:
+            遗言内容
+        """
+        # 构建 prompt
+        from ...utils.prompt_builder import build_last_words_prompt
+        observation = await self.observe(game_state)
+        system_prompt, user_prompt = build_last_words_prompt(
+            self.agent_id,
+            self.name,
+            self.role,
+            game_state,
+            observation,
+            death_reason
+        )
+        
+        # 定义遗言的 Schema
+        from pydantic import BaseModel, Field
+        class LastWordsDecision(BaseModel):
+            thought: str = Field(description="推理过程")
+            content: str = Field(description="遗言内容")
+            confidence: float = Field(description="置信度（0-1）", ge=0.0, le=1.0)
+            reasoning: str = Field(description="遗言理由")
+        
+        try:
+            # 获取结构化输出的 LLM
+            structured_llm = self.llm_client.get_structured_llm(LastWordsDecision)
+            
+            # 调用 LLM（使用 LangChain 消息格式）
+            from langchain_core.messages import SystemMessage, HumanMessage
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt)
+            ]
+            decision = await structured_llm.ainvoke(messages)
+            
+            return decision.content
+        except Exception as e:
+            # LLM 调用失败，返回默认遗言
+            print(f"⚠️  {self.name} 遗言 LLM 调用失败: {e}")
+            return f"{self.name} 的遗言（LLM 调用失败，使用默认遗言）"
 
