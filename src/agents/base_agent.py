@@ -306,4 +306,64 @@ class BaseAgent(ABC):
             # LLM 调用失败，默认销毁警徽
             print(f"⚠️  警长 {self.name} 移交决策 LLM 调用失败: {e}")
             return None
+    
+    async def decide_speaking_order(
+        self,
+        game_state: Dict[str, Any],
+        alive_players: List[Any]
+    ) -> bool:
+        """
+        决定发言顺序（仅警长可以调用）
+        
+        Args:
+            game_state: 游戏状态
+            alive_players: 存活玩家列表
+        
+        Returns:
+            True=顺序发言，False=逆序发言
+        """
+        # 检查是否是警长
+        players = game_state.get("players", [])
+        current_player = next((p for p in players if p.player_id == self.agent_id), None)
+        if not current_player or not current_player.is_sheriff:
+            # 不是警长，默认顺序
+            return True
+        
+        # 构建 prompt
+        from ...utils.prompt_builder import build_speaking_order_prompt
+        observation = await self.observe(game_state)
+        system_prompt, user_prompt = build_speaking_order_prompt(
+            self.agent_id,
+            self.name,
+            self.role,
+            game_state,
+            observation,
+            alive_players
+        )
+        
+        # 定义发言顺序决策的 Schema
+        from pydantic import BaseModel, Field
+        class SpeakingOrderDecision(BaseModel):
+            thought: str = Field(description="推理过程")
+            use_order: bool = Field(description="是否顺序发言（True=顺序，False=逆序）")
+            confidence: float = Field(description="置信度（0-1）", ge=0.0, le=1.0)
+            reasoning: str = Field(description="决策理由")
+        
+        try:
+            # 获取结构化输出的 LLM
+            structured_llm = self.llm_client.get_structured_llm(SpeakingOrderDecision)
+            
+            # 调用 LLM（使用 LangChain 消息格式）
+            from langchain_core.messages import SystemMessage, HumanMessage
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt)
+            ]
+            decision = await structured_llm.ainvoke(messages)
+            
+            return decision.use_order
+        except Exception as e:
+            # LLM 调用失败，默认顺序发言
+            print(f"⚠️  警长 {self.name} 发言顺序决策 LLM 调用失败: {e}")
+            return True
 

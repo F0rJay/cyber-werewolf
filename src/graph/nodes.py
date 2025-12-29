@@ -527,9 +527,19 @@ async def sheriff_campaign_node(state: GameState) -> Dict[str, Any]:
             "sheriff_votes": {},
         }
     
-    # 竞选者发言（随机顺序），支持退水
+    # 竞选者发言（顺序发言，随机选择第一个），支持退水
     print(f"\n  竞选者发言（{len(candidates)}人，可退水）：")
-    random.shuffle(candidates)
+    # 按玩家序号排序
+    candidate_players = [p for p in alive_players if p.player_id in candidates]
+    candidate_players.sort(key=lambda p: p.player_id)
+    
+    # 随机选择第一个发言的玩家
+    if candidate_players:
+        first_index = random.randint(0, len(candidate_players) - 1)
+        # 重新排列：从第一个开始，然后顺序
+        ordered_candidates = candidate_players[first_index:] + candidate_players[:first_index]
+        candidates = [p.player_id for p in ordered_candidates]
+        print(f"    发言顺序（从玩家{candidates[0]}开始）：{' → '.join([f'玩家{pid}' for pid in candidates])}")
     final_candidates = []
     
     for candidate_id in candidates:
@@ -674,11 +684,29 @@ async def discussion_node(state: GameState) -> Dict[str, Any]:
     # 检查是否有警长，如果有则警长选择发言顺序
     sheriff = next((p for p in alive_players if p.is_sheriff), None)
     if sheriff:
-        print(f"  👮 警长 {sheriff.name} 选择发言顺序")
-        # TODO: 调用警长 Agent 选择发言顺序
-        # 目前随机顺序
-        random.shuffle(alive_players)
-        # 注意：警长不能自爆（即使警长是狼人）
+        print(f"  👮 警长 {sheriff.name} (玩家{sheriff.player_id}) 选择发言顺序")
+        # 调用警长 Agent 选择发言顺序
+        from ..utils.agent_factory import create_agent_by_role
+        sheriff_agent = create_agent_by_role(sheriff.player_id, sheriff.name, sheriff.role)
+        use_order = await sheriff_agent.decide_speaking_order(state, alive_players)
+        
+        # 按玩家序号排序
+        sorted_players = sorted(alive_players, key=lambda p: p.player_id)
+        player_ids = [p.player_id for p in sorted_players]
+        sheriff_index = player_ids.index(sheriff.player_id)
+        
+        if use_order:
+            # 顺序发言：从警长下一个开始，到最后一个，然后从第一个到警长
+            speaking_order = player_ids[sheriff_index + 1:] + player_ids[:sheriff_index + 1]
+            print(f"    选择顺序发言：{' → '.join([f'玩家{pid}' for pid in speaking_order])}")
+        else:
+            # 逆序发言：从警长前一个开始，逆序到第一个，然后从最后一个到警长
+            speaking_order = player_ids[:sheriff_index][::-1] + player_ids[sheriff_index:][::-1]
+            print(f"    选择逆序发言：{' → '.join([f'玩家{pid}' for pid in speaking_order])}")
+        
+        # 重新排列 alive_players 按照发言顺序
+        player_dict = {p.player_id: p for p in alive_players}
+        alive_players = [player_dict[pid] for pid in speaking_order]
     else:
         # 无警长，随机顺序
         random.shuffle(alive_players)

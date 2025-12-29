@@ -818,3 +818,82 @@ def build_sheriff_transfer_prompt(
     
     return system_prompt, user_prompt
 
+
+def build_speaking_order_prompt(
+    agent_id: int,
+    agent_name: str,
+    agent_role: str,
+    game_state: Dict[str, Any],
+    observation: Dict[str, Any],
+    alive_players: List[Any]
+) -> tuple[str, str]:
+    """
+    构建警长选择发言顺序的 prompt
+    
+    Args:
+        agent_id: Agent ID（警长）
+        agent_name: Agent 名称
+        agent_role: Agent 角色
+        game_state: 游戏状态
+        observation: Agent 观察到的信息
+        alive_players: 存活玩家列表
+    
+    Returns:
+        (system_prompt, user_prompt)
+    """
+    from .prompt_builder import format_player_info, format_game_history
+    
+    role_cn = {
+        "villager": "村民",
+        "werewolf": "狼人",
+        "seer": "预言家",
+        "witch": "女巫",
+        "guard": "守卫"
+    }.get(agent_role, agent_role)
+    
+    # 按玩家序号排序
+    sorted_players = sorted(alive_players, key=lambda p: p.player_id)
+    player_ids = [p.player_id for p in sorted_players]
+    sheriff_id = agent_id
+    
+    # 计算顺序和逆序的发言顺序
+    sheriff_index = player_ids.index(sheriff_id)
+    # 顺序：从警长下一个开始，到最后一个，然后从第一个到警长
+    order_sequence = player_ids[sheriff_index + 1:] + player_ids[:sheriff_index + 1]
+    # 逆序：从警长前一个开始，逆序到第一个，然后从最后一个到警长
+    reverse_sequence = player_ids[:sheriff_index][::-1] + player_ids[sheriff_index:][::-1]
+    
+    system_prompt = f"""你是狼人杀游戏中的{role_cn}（玩家{agent_id} - {agent_name}），同时你也是警长。你需要选择发言顺序。
+
+发言顺序规则：
+- 以你的序号为中心，你为归票位（最后发言）
+- 顺序发言：从你下一个玩家开始，按序号顺序发言，最后你发言
+- 逆序发言：从你前一个玩家开始，按序号逆序发言，最后你发言
+
+请根据当前情况，选择顺序或逆序发言。"""
+    
+    user_prompt = f"""当前游戏状态：
+
+你的身份：{role_cn}（玩家{agent_id} - {agent_name}），警长
+当前是第{game_state.get("day_number", 1)}天
+
+存活玩家（按序号排序）：
+{format_player_info(sorted_players)}
+
+顺序发言顺序（从你下一个开始）：
+{' → '.join([f'玩家{pid}' for pid in order_sequence])}
+
+逆序发言顺序（从你前一个开始）：
+{' → '.join([f'玩家{pid}' for pid in reverse_sequence])}
+
+游戏历史：
+{format_game_history(game_state.get("history", []))}
+
+请根据当前情况，决定选择顺序还是逆序发言。请返回你的决策，包括：
+1. 推理过程
+2. 选择顺序还是逆序（True=顺序，False=逆序）
+3. 置信度（0-1）
+4. 决策理由"""
+    
+    return system_prompt, user_prompt
+
