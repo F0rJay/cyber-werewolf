@@ -56,11 +56,10 @@ async def test_structured_output():
     print("\n\n🔍 测试结构化输出...")
     print("=" * 50)
     
-    try:
-        from src.schemas.actions import AgentAction
-        
-        client = LLMClient(provider="deepseek")
-        structured_llm = client.get_structured_llm(AgentAction)
+    from src.schemas.actions import AgentAction
+    
+    client = LLMClient(provider="deepseek")
+    structured_llm = client.get_structured_llm(AgentAction)
         
         system_prompt = """你是一个狼人杀游戏中的村民。你需要输出结构化的行动指令。
 行动类型包括: vote, kill, check, save, guard, skip"""
@@ -88,12 +87,7 @@ async def test_structured_output():
         print(f"理由: {action.reasoning}")
         print("-" * 50)
         
-        print("\n✅ 结构化输出测试成功！")
-        
-    except Exception as e:
-        print(f"\n❌ 测试失败: {e}")
-        import traceback
-        traceback.print_exc()
+    print("\n✅ 结构化输出测试成功！")
 
 
 async def main():
@@ -101,19 +95,48 @@ async def main():
     print("🐺 Cyber-Werewolf - DeepSeek-V3 API 测试\n")
     
     # 检查环境变量
-    if not os.getenv("DEEPSEEK_API_KEY"):
+    has_api_key = bool(os.getenv("DEEPSEEK_API_KEY"))
+    if not has_api_key:
         print("⚠️  警告: 未找到 DEEPSEEK_API_KEY 环境变量")
         print("💡 请在 .env 文件中配置:")
         print("   DEEPSEEK_API_KEY=your_api_key_here\n")
+        print("=" * 50)
+        print("❌ 测试无法继续：缺少 API Key")
+        print("=" * 50)
+        return
+    
+    # 测试结果跟踪
+    results = {
+        "connection": False,
+        "structured": False
+    }
     
     # 测试连接
-    await test_deepseek_connection()
+    try:
+        await test_deepseek_connection()
+        results["connection"] = True
+    except Exception as e:
+        print(f"\n❌ 连接测试失败: {e}")
     
     # 测试结构化输出
-    await test_structured_output()
+    try:
+        await test_structured_output()
+        results["structured"] = True
+    except Exception as e:
+        print(f"\n❌ 结构化输出测试失败: {e}")
     
+    # 显示测试结果摘要
     print("\n" + "=" * 50)
-    print("🎉 所有测试完成！")
+    print("📊 测试结果摘要")
+    print("=" * 50)
+    print(f"  API 连接测试: {'✅ 通过' if results['connection'] else '❌ 失败'}")
+    print(f"  结构化输出测试: {'✅ 通过' if results['structured'] else '❌ 失败'}")
+    
+    if all(results.values()):
+        print("\n🎉 所有测试通过！")
+    else:
+        print("\n⚠️  部分测试失败，请检查错误信息")
+    print("=" * 50)
 
 
 if __name__ == "__main__":
