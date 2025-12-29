@@ -779,7 +779,16 @@ async def exile_voting_node(state: GameState) -> Dict[str, Any]:
                     )
                     updated_players.append(updated_p)
                     print(f"\n  ❌ {p.name} (玩家{eliminated_id}) 被放逐")
-                    # TODO: 选择发动技能、留下遗言
+                    
+                    # 被放逐的玩家有遗言
+                    from ..utils.agent_factory import create_agent_by_role
+                    agent = create_agent_by_role(eliminated_id, p.name, p.role)
+                    last_word = await agent.leave_last_words(state, death_reason="exile")
+                    
+                    last_words = state.get("last_words", {})
+                    last_words[eliminated_id] = last_word
+                    updates["last_words"] = last_words
+                    print(f"      💬 遗言: {last_word}")
                 else:
                     updated_players.append(p)
             
