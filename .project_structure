@@ -1,0 +1,28 @@
+# 项目结构说明文件
+# 此文件用于 IDE 和工具识别项目结构
+
+[project]
+name = "cyber-werewolf"
+version = "0.2.0"
+description = "基于 LangGraph 的多智能体编排与博弈系统"
+
+[structure]
+source_dir = "src"
+test_dir = "tests"
+example_dir = "examples"
+doc_dir = "docs"
+
+[modules]
+core = [
+    "src.agents",
+    "src.graph",
+    "src.state",
+    "src.memory",
+    "src.schemas",
+    "src.utils"
+]
+
+[versions]
+v1 = "基础版本，简化规则"
+v2 = "完整版本，实现所有游戏规则（推荐）"
+

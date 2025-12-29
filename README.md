@@ -17,16 +17,40 @@ Cyber-Werewolf 是一个使用 LangGraph 构建的狼人杀游戏系统，展示
 
 ```
 cyber-werewolf/
-├── src/              # 源代码
-│   ├── agents/       # Agent 实现
-│   ├── graph/        # LangGraph 工作流
-│   ├── state/        # 状态管理
-│   ├── memory/       # 记忆系统
-│   ├── schemas/      # 数据模型
-│   └── utils/        # 工具函数
-├── tests/            # 测试代码
-├── examples/         # 示例代码
-└── requirements.txt  # 依赖列表
+├── src/                    # 源代码
+│   ├── agents/            # Agent 实现
+│   │   ├── base_agent.py  # Agent 基类
+│   │   ├── villager.py    # 村民 Agent
+│   │   ├── werewolf.py    # 狼人 Agent
+│   │   └── roles/         # 特殊角色（预言家、女巫、守卫）
+│   ├── graph/             # LangGraph 工作流
+│   │   ├── game_graph.py      # 工作流主图
+│   │   ├── nodes.py           # 节点实现
+│   │   └── edges.py           # 条件边实现
+│   ├── state/              # 状态管理
+│   │   ├── game_state.py   # 游戏状态定义
+│   │   └── state_manager.py # 状态管理器
+│   ├── memory/             # 记忆系统
+│   │   ├── memory_manager.py # 记忆管理器
+│   │   └── filters.py        # 信息过滤
+│   ├── schemas/            # 数据模型（Pydantic）
+│   │   └── actions.py      # Agent 行动指令 Schema
+│   └── utils/              # 工具函数
+│       ├── llm_client.py    # LLM 客户端（DeepSeek/OpenAI）
+│       ├── role_assigner.py # 身份分配
+│       └── validators.py    # 验证器
+├── tests/                  # 测试代码
+├── examples/               # 示例代码
+│   ├── run_game.py         # 完整游戏运行
+│   └── test_deepseek.py    # DeepSeek API 测试
+├── docs/                   # 文档
+│   ├── LLM_CONFIG.md       # LLM 配置说明
+│   ├── QUICKSTART.md       # 快速开始指南
+│   ├── GRAPH_IMPLEMENTATION.md # 工作流实现说明
+│   └── GAME_RULES.md       # 游戏规则说明
+├── CHANGELOG.md            # 开发日志
+├── requirements.txt        # 依赖列表
+└── README.md              # 项目说明
 ```
 
 ## 快速开始
@@ -53,19 +77,39 @@ DEEPSEEK_BASE_URL=https://api.deepseek.com/v1  # 可选，默认值
 ### 3. 运行示例
 
 ```bash
-python examples/demo_game.py
+# 运行完整游戏
+python examples/run_game.py
+
+# 测试 DeepSeek API 连接
+python examples/test_deepseek.py
 ```
 
-## 开发计划
+## 文档
+
+- [快速开始指南](docs/QUICKSTART.md)
+- [LLM 配置说明](docs/LLM_CONFIG.md)
+- [工作流实现说明](docs/GRAPH_IMPLEMENTATION.md) - 工作流详解
+- [游戏规则说明](docs/GAME_RULES.md)
+- [项目结构说明](docs/PROJECT_STRUCTURE.md)
+- [架构设计文档](ARCHITECTURE.md)
+- [开发日志](CHANGELOG.md)
+
+## 开发状态
 
 - [x] 项目结构搭建
-- [ ] LangGraph 工作流实现
-- [ ] GameState 设计
-- [ ] Agent 基础框架
-- [ ] 结构化输出 Schema
-- [ ] 记忆系统实现
-- [ ] 游戏流程节点
-- [ ] 测试用例
+- [x] LangGraph 工作流实现
+- [x] GameState 设计
+- [x] Agent 基础框架
+- [x] 结构化输出 Schema
+- [x] 记忆系统实现
+- [x] 游戏流程节点
+- [x] 身份分配系统
+- [x] 警长机制
+- [x] 平票重议机制
+- [x] 屠边规则
+- [ ] Agent LLM 集成
+- [ ] 完整技能系统
+- [ ] 测试用例完善
 
 ## 技术栈
 

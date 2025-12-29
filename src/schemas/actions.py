@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 class AgentAction(BaseModel):
     """Agent 行动指令（结构化输出）"""
     thought: str = Field(description="推理过程")
-    action_type: Literal["vote", "kill", "check", "save", "guard", "skip"] = Field(
+    action_type: Literal["vote", "kill", "check", "save", "guard", "explode", "skip"] = Field(
         description="行动类型"
     )
     target: Optional[int] = Field(
