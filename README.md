@@ -114,6 +114,9 @@ python examples/test_deepseek.py
 - [x] Agent LLM 集成（技能决策）
 - [x] 发言系统 LLM 集成
 - [x] 投票系统 LLM 集成
+- [x] 遗言系统 LLM 集成
+- [x] 警长移交机制（LLM 决策）
+- [x] 发言顺序机制（警上顺序发言，警长选择顺序/逆序）
 - [ ] 测试用例完善
 
 ## 技术栈
