@@ -2,6 +2,44 @@
 
 本文档记录 Cyber-Werewolf 项目的所有重要变更。
 
+## [0.4.0]
+
+### 🐛 关键问题修复
+
+#### 游戏逻辑修复
+- **修复游戏结束判定**
+  - 问题：游戏一开始没有设置神职，却出现"狼人获胜！（神职全部出局）"的判定
+  - 修复：在 `init_state` 中记录初始神职和村民数量，`check_game_end` 只判定初始存在的阵营全部出局
+  - 如果一开始就没有神职，不会因为神职数量为0而判定游戏结束
+
+- **修复夜晚死亡时机**
+  - 问题：第一天被刀的玩家在第二天白天警上还活着，可以参与上警、发言、投票等操作
+  - 修复：夜晚阶段只记录被杀玩家，不立即设置为死亡；在 `announce_death_node` 中才真正淘汰玩家
+  - 被刀的玩家在第二天白天仍可以参与警长竞选、发言、投票等，直到公布出局玩家阶段
+
+- **修复发言 prompt**
+  - 问题：所有人发言都是场面话，没有针对上文进行分析
+  - 修复：修改 `build_speak_prompt`，强调必须针对前面玩家的发言内容进行具体分析
+  - 要求给出具体的推理和判断，指出矛盾和疑点，避免只说场面话
+
+#### 技术修复
+- **修复游戏图递归限制错误**
+  - 问题：`Recursion limit of 25 reached without hitting a stop condition`
+  - 修复：优化 `route_after_sheriff_campaign` 和 `route_after_sheriff_voting` 的路由逻辑
+  - 正确处理无人竞选警长、PK发言后的路由，避免无限循环
+
+- **修复 history 字段并发更新问题**
+  - 问题：`At key 'history': Can receive only one value per step`
+  - 修复：使用 `Annotated[List[Dict], operator.add]` 允许多个节点在同一步骤中追加历史记录
+  - 每个节点返回单个历史记录项作为列表，LangGraph 自动合并
+
+#### 代码优化
+- 优化 `announce_death_node` 的警长移交逻辑
+- 修复 `updated_players` 和 `last_words` 的作用域问题
+- 改进代码结构和错误处理
+
+---
+
 ## [0.3.9]
 
 ### 🛠️ 测试脚本完善
