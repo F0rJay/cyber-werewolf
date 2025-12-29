@@ -47,6 +47,7 @@ class GameState(TypedDict):
     sheriff_vote_round: int  # 警长投票轮次（1=第一轮，2=第二轮）
     sheriff_tied_candidates: List[int]  # 警长投票平票的候选人ID列表
     sheriff_withdrawn: List[int]  # 退水的玩家ID列表
+    sheriff_transfer: Optional[Dict[str, Any]]  # 警长移交信息 {from_id: int, to_id: Optional[int], destroyed: bool}
     # 角色特殊能力相关
     seer_checks: Dict[int, str]  # 预言家查验结果 {target_id: "好人" 或 "狼人"}
     witch_antidote_used: bool  # 女巫解药是否已使用
@@ -91,6 +92,7 @@ class StateManager:
             "sheriff_vote_round": 0,
             "sheriff_tied_candidates": [],
             "sheriff_withdrawn": [],
+            "sheriff_transfer": None,
             "seer_checks": {},
             "witch_antidote_used": False,
             "witch_poison_used": False,

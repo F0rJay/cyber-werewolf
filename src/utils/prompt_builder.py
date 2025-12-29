@@ -761,3 +761,72 @@ def build_last_words_prompt(
     
     return system_prompt, user_prompt
 
+
+def build_sheriff_transfer_prompt(
+    agent_id: int,
+    agent_name: str,
+    agent_role: str,
+    game_state: Dict[str, Any],
+    observation: Dict[str, Any]
+) -> tuple[str, str]:
+    """
+    构建警长移交决策的 prompt
+    
+    Args:
+        agent_id: Agent ID（警长）
+        agent_name: Agent 名称
+        agent_role: Agent 角色
+        game_state: 游戏状态
+        observation: Agent 观察到的信息
+    
+    Returns:
+        (system_prompt, user_prompt)
+    """
+    players = game_state.get("players", [])
+    alive_players = [p for p in players if p.is_alive]
+    # 可以移交给的玩家（除了自己）
+    transferable_players = [p for p in alive_players if p.player_id != agent_id]
+    day_number = game_state.get("day_number", 1)
+    
+    role_cn = {
+        "villager": "村民",
+        "werewolf": "狼人",
+        "seer": "预言家",
+        "witch": "女巫",
+        "guard": "守卫"
+    }.get(agent_role, agent_role)
+    
+    system_prompt = f"""你是狼人杀游戏中的{role_cn}（玩家{agent_id} - {agent_name}），同时你也是警长。你刚刚出局，需要决定如何处理警徽。
+
+警长移交规则：
+- 你可以选择将警徽移交给其他存活玩家（该玩家成为新警长）
+- 或者选择销毁警徽（不移交，本局没有警长）
+- 移交警徽是一个重要的战术决策，需要谨慎考虑
+- 如果移交给好人，可以帮助好人阵营
+- 如果移交给狼人，可能会对好人阵营不利
+
+请根据当前情况，决定如何处理警徽。"""
+    
+    user_prompt = f"""当前游戏状态：
+
+你的身份：{role_cn}（玩家{agent_id} - {agent_name}），警长
+当前是第{day_number}天
+
+可以移交给的存活玩家：
+{format_player_info(transferable_players) if transferable_players else "无存活玩家"}
+
+存活玩家：
+{format_player_info(alive_players)}
+
+游戏历史：
+{format_game_history(game_state.get("history", []))}
+
+请根据当前情况，决定如何处理警徽。请返回你的决策，包括：
+1. 推理过程
+2. 是否移交警徽（True=移交，False=销毁）
+3. 如果移交，目标玩家ID（如果不移交则返回None）
+4. 置信度（0-1）
+5. 决策理由"""
+    
+    return system_prompt, user_prompt
+

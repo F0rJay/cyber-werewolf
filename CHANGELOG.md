@@ -2,6 +2,47 @@
 
 本文档记录 Cyber-Werewolf 项目的所有重要变更。
 
+## [0.3.5] - 2024-12-29
+
+### 👮 警长移交机制实现
+
+#### 新增功能
+- **警长移交系统** (`src/agents/base_agent.py`)
+  - 实现 `decide_sheriff_transfer()` 方法，支持警长移交决策
+  - 使用 LLM 智能决策是否移交警徽及移交给谁
+  - 使用结构化输出（`SheriffTransferDecision`）确保返回正确格式
+
+- **Prompt 构建扩展** (`src/utils/prompt_builder.py`)
+  - 新增 `build_sheriff_transfer_prompt()`：构建警长移交决策的 prompt
+  - 提供完整的游戏状态和可移交玩家信息
+
+#### 游戏规则完善
+- **警长移交规则**：
+  - ✅ 警长出局后（夜里出局或被放逐），需要决定如何处理警徽
+  - ✅ 可以选择将警徽移交给其他存活玩家（该玩家成为新警长）
+  - ✅ 或者选择销毁警徽（不移交，本局没有警长）
+  - ✅ 移交决策由 LLM 智能决策
+
+#### 节点更新
+- **公布出局节点** (`src/graph/nodes.py`)
+  - `announce_death_node`：处理警长夜里出局时的移交
+  - 如果警长出局，调用 `decide_sheriff_transfer()` 决定移交或销毁
+
+- **放逐投票节点** (`src/graph/nodes.py`)
+  - `exile_voting_node`：处理警长被放逐时的移交
+  - 如果警长被放逐，调用 `decide_sheriff_transfer()` 决定移交或销毁
+
+#### 状态管理
+- **GameState 扩展** (`src/state/game_state.py`)
+  - 新增 `sheriff_transfer` 字段：记录警长移交信息
+  - 包含移交来源、目标、是否销毁等信息
+
+#### 文档更新
+- 更新 `docs/GAME_RULES.md`：详细说明警长移交机制
+- 更新相关文档说明
+
+---
+
 ## [0.3.4] - 2024-12-29
 
 ### 🔧 自爆机制规则修正

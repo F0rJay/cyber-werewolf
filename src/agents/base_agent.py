@@ -235,4 +235,75 @@ class BaseAgent(ABC):
             # LLM 调用失败，返回默认遗言
             print(f"⚠️  {self.name} 遗言 LLM 调用失败: {e}")
             return f"{self.name} 的遗言（LLM 调用失败，使用默认遗言）"
+    
+    async def decide_sheriff_transfer(
+        self,
+        game_state: Dict[str, Any]
+    ) -> Optional[int]:
+        """
+        决定警长移交（仅警长可以调用）
+        
+        Args:
+            game_state: 游戏状态
+        
+        Returns:
+            目标玩家ID（如果移交），None（如果销毁警徽）
+        """
+        # 检查是否是警长
+        players = game_state.get("players", [])
+        current_player = next((p for p in players if p.player_id == self.agent_id), None)
+        if not current_player or not current_player.is_sheriff:
+            # 不是警长，不能移交
+            return None
+        
+        # 构建 prompt
+        from ...utils.prompt_builder import build_sheriff_transfer_prompt
+        observation = await self.observe(game_state)
+        system_prompt, user_prompt = build_sheriff_transfer_prompt(
+            self.agent_id,
+            self.name,
+            self.role,
+            game_state,
+            observation
+        )
+        
+        # 定义警长移交决策的 Schema
+        from pydantic import BaseModel, Field
+        from typing import Optional
+        class SheriffTransferDecision(BaseModel):
+            thought: str = Field(description="推理过程")
+            should_transfer: bool = Field(description="是否移交警徽（True=移交，False=销毁）")
+            target_id: Optional[int] = Field(default=None, description="目标玩家ID（如果移交），None（如果销毁）")
+            confidence: float = Field(description="置信度（0-1）", ge=0.0, le=1.0)
+            reasoning: str = Field(description="决策理由")
+        
+        try:
+            # 获取结构化输出的 LLM
+            structured_llm = self.llm_client.get_structured_llm(SheriffTransferDecision)
+            
+            # 调用 LLM（使用 LangChain 消息格式）
+            from langchain_core.messages import SystemMessage, HumanMessage
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt)
+            ]
+            decision = await structured_llm.ainvoke(messages)
+            
+            # 验证决策
+            if decision.should_transfer and decision.target_id:
+                # 验证目标玩家是否存在且存活
+                alive_players = [p for p in players if p.is_alive]
+                target_player = next(
+                    (p for p in alive_players if p.player_id == decision.target_id),
+                    None
+                )
+                if target_player and target_player.player_id != self.agent_id:
+                    return decision.target_id
+            
+            # 不移交或无效目标，返回 None（销毁警徽）
+            return None
+        except Exception as e:
+            # LLM 调用失败，默认销毁警徽
+            print(f"⚠️  警长 {self.name} 移交决策 LLM 调用失败: {e}")
+            return None
 
