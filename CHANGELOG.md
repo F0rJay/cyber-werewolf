@@ -2,6 +2,65 @@
 
 本文档记录 Cyber-Werewolf 项目的所有重要变更。
 
+## [0.3.2] - 2024-12-29
+
+### 🎤 发言和投票系统 LLM 集成
+
+#### 新增功能
+- **发言系统 LLM 集成** (`src/agents/base_agent.py`)
+  - 实现 `speak()` 方法，支持所有 Agent 的发言功能
+  - 支持三种发言上下文：正常发言、警长竞选发言、警长PK发言
+  - 使用 LLM 生成符合角色身份和游戏状态的发言内容
+  - 使用结构化输出（`SpeakDecision`）确保返回正确格式
+
+- **投票系统 LLM 集成** (`src/agents/base_agent.py`)
+  - 实现 `vote()` 方法，支持所有 Agent 的投票功能
+  - 支持两种投票类型：放逐投票、警长投票
+  - 使用 LLM 决策投票目标，基于游戏历史和当前状态
+  - 使用结构化输出（`VoteDecision`）确保返回正确格式
+  - 包含目标验证（不能投票给自己，警长投票需在候选人中）
+
+- **Prompt 构建扩展** (`src/utils/prompt_builder.py`)
+  - 新增 `build_speak_prompt()`：构建发言 prompt，支持不同上下文
+  - 新增 `build_vote_prompt()`：构建投票 prompt，支持放逐投票和警长投票
+  - 自动格式化最近的发言记录和游戏历史
+
+- **Schema 扩展** (`src/schemas/actions.py`)
+  - 新增 `SpeakDecision`：发言决策的结构化输出 Schema
+  - 新增 `VoteDecision`：投票决策的结构化输出 Schema
+
+#### 节点更新
+- **发言节点** (`src/graph/nodes.py`)
+  - `discussion_node`：集成 Agent 的 `speak()` 方法
+  - `sheriff_campaign_node`：集成警长竞选发言和PK发言
+  - 所有发言现在由 LLM 生成，符合角色身份和游戏状态
+
+- **投票节点** (`src/graph/nodes.py`)
+  - `exile_voting_node`：集成放逐投票，支持平票重议
+  - `sheriff_voting_node`：集成警长投票，支持两轮投票
+  - 所有投票现在由 LLM 决策，基于发言和游戏表现
+
+#### 修复
+- **狼人投票平票逻辑修复** (`src/graph/nodes.py`)
+  - 修复：狼人投票平票时，从平票玩家中随机选一人攻击（而不是平安夜）
+  - 符合游戏规则：平票时随机选择攻击目标
+
+- **预言家查验结果修复** (`src/agents/roles/seer.py`)
+  - 修复：预言家查验只能返回"好人"或"狼人"，不能知道具体身份
+  - 更新 `check_player()` 方法，只返回"好人"或"狼人"
+  - 更新相关 prompt 和显示逻辑，不再显示具体角色身份
+
+#### 改进
+- **错误处理**：发言和投票 LLM 调用都包含异常处理，失败时使用默认逻辑
+- **代码一致性**：统一所有 Agent 的发言和投票接口
+- **VillagerAgent 修复**：更新构造函数以支持 `llm_client` 参数
+
+#### 文档更新
+- 更新 `docs/GAME_RULES.md`：说明狼人投票平票规则和预言家查验规则
+- 更新相关文档说明
+
+---
+
 ## [0.3.1] - 2024-12-29
 
 ### 🤖 Agent LLM 完整集成

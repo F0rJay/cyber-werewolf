@@ -113,24 +113,27 @@ async def night_phase_node(state: GameState) -> Dict[str, Any]:
             for target_id in werewolf_votes.values():
                 vote_counts[target_id] = vote_counts.get(target_id, 0) + 1
             
-            # 得票最多的被攻击（平票则平安夜）
+            # 得票最多的被攻击（平票则从平票玩家中随机选一人攻击）
             if vote_counts:
                 max_votes = max(vote_counts.values())
                 attacked_players = [pid for pid, votes in vote_counts.items() if votes == max_votes]
                 
                 if len(attacked_players) == 1:
                     attacked_id = attacked_players[0]
-                    attacked_player = next((p for p in alive_players if p.player_id == attacked_id), None)
-                    if attacked_player:
-                        night_actions["werewolf"] = {
-                            "target": attacked_id,
-                            "votes": werewolf_votes,
-                            "vote_counts": vote_counts
-                        }
-                        killed_players.append(attacked_id)
-                        print(f"    ✅ 狼人团队决定攻击: {attacked_player.name} (玩家{attacked_id})")
                 else:
-                    print(f"    ⚠️  狼人投票平票，平安夜")
+                    # 平票：从平票玩家中随机选一人攻击
+                    attacked_id = random.choice(attacked_players)
+                    print(f"    ⚠️  狼人投票平票，从平票玩家中随机选择: {attacked_players}")
+                
+                attacked_player = next((p for p in alive_players if p.player_id == attacked_id), None)
+                if attacked_player:
+                    night_actions["werewolf"] = {
+                        "target": attacked_id,
+                        "votes": werewolf_votes,
+                        "vote_counts": vote_counts
+                    }
+                    killed_players.append(attacked_id)
+                    print(f"    ✅ 狼人团队决定攻击: {attacked_player.name} (玩家{attacked_id})")
         else:
             print(f"    ⚠️  狼人未选择攻击目标，平安夜")
     
@@ -150,13 +153,12 @@ async def night_phase_node(state: GameState) -> Dict[str, Any]:
         target_id = await seer_agent.decide_check_target(state)
         
         if target_id:
-            target_id = action.target
             target_player = next((p for p in alive_players if p.player_id == target_id), None)
             
             if target_player:
                 # 执行查验
                 check_result = await seer_agent.check_player(state, target_id)
-                target_role = target_player.role
+                check_result_value = check_result.get(target_id, "未知")
                 
                 # 更新查验历史
                 seer_checks = state.get("seer_checks", {})
@@ -164,10 +166,10 @@ async def night_phase_node(state: GameState) -> Dict[str, Any]:
                 
                 night_actions["seer"] = {
                     "target": target_id,
-                    "role": target_role,
+                    "result": check_result_value,  # "好人" 或 "狼人"
                     "agent_id": seer.player_id
                 }
-                print(f"    预言家查验: {target_player.name} (玩家{target_id}) - 身份: {target_role}")
+                print(f"    预言家查验: {target_player.name} (玩家{target_id}) - {check_result_value}")
                 
                 # 更新查验历史（不提前返回，继续执行守卫和女巫）
                 state["seer_checks"] = seer_checks
@@ -386,9 +388,13 @@ async def sheriff_campaign_node(state: GameState) -> Dict[str, Any]:
         # PK发言
         print(f"\n  PK发言（{len(pk_candidates)}人）：")
         random.shuffle(pk_candidates)
+        from ..utils.agent_factory import create_agent_by_role
         for candidate in pk_candidates:
             print(f"    {candidate.name} (玩家{candidate.player_id}) 正在PK发言...")
-            # TODO: 调用 Agent 发言逻辑
+            # 调用 Agent 发言逻辑
+            agent = create_agent_by_role(candidate.player_id, candidate.name, candidate.role)
+            content = await agent.speak(state, context="sheriff_pk")
+            print(f"      💬 {content}")
             await asyncio.sleep(0.1)
         
         return {}
@@ -436,9 +442,13 @@ async def sheriff_campaign_node(state: GameState) -> Dict[str, Any]:
         candidate = next((p for p in alive_players if p.player_id == candidate_id), None)
         if candidate:
             print(f"    {candidate.name} (玩家{candidate_id}) 正在发言...")
-            # TODO: 调用 Agent 发言逻辑
+            # 调用 Agent 发言逻辑
+            from ..utils.agent_factory import create_agent_by_role
+            agent = create_agent_by_role(candidate.player_id, candidate.name, candidate.role)
+            content = await agent.speak(state, context="sheriff_campaign")
+            print(f"      💬 {content}")
             
-            # 退水操作（随机模拟）
+            # 退水操作（随机模拟，TODO: 可以集成到 LLM 决策中）
             will_withdraw = random.choice([False])  # 模拟（暂时不退水）
             if will_withdraw:
                 sheriff_withdrawn.append(candidate_id)
@@ -487,14 +497,17 @@ async def sheriff_voting_node(state: GameState) -> Dict[str, Any]:
     sheriff_votes = {}
     
     # 所有玩家投票
+    from ..utils.agent_factory import create_agent_by_role
     for player in alive_players:
-        # TODO: 调用 Agent 投票逻辑
-        # 目前随机投票给候选人
-        if candidates:
-            target = random.choice(candidates)
+        # 调用 Agent 投票逻辑
+        agent = create_agent_by_role(player.player_id, player.name, player.role)
+        target = await agent.vote(state, vote_type="sheriff", candidates=candidates)
+        if target:
             sheriff_votes[player.player_id] = target
             candidate_name = next((p.name for p in alive_players if p.player_id == target), f"玩家{target}")
             print(f"    {player.name} 投票给 {candidate_name}")
+        else:
+            print(f"    {player.name} 弃权")
     
     # 统计投票结果
     vote_counts = {}
@@ -637,16 +650,15 @@ async def discussion_node(state: GameState) -> Dict[str, Any]:
         
         print(f"  {player.name} (玩家{player.player_id}) 正在发言...")
         
-        # TODO: 调用 Agent 发言逻辑
-        # 获取可见信息
-        observation = await agent.observe(state)
+        # 调用 Agent 发言逻辑
+        content = await agent.speak(state, context="normal")
+        print(f"    💬 {content}")
         
-        # 生成发言内容（目前模拟）
         discussion = {
             "player_id": player.player_id,
             "player_name": player.name,
             "role": player.role,
-            "content": f"{player.name} 的发言（待实现 Agent 逻辑）",
+            "content": content,
             "day": day_number,
         }
         discussions.append(discussion)
@@ -692,15 +704,17 @@ async def exile_voting_node(state: GameState) -> Dict[str, Any]:
     votes = {}
     
     # 收集投票
+    from ..utils.agent_factory import create_agent_by_role
     for player in alive_players:
-        # TODO: 调用 Agent 投票逻辑
-        # 目前随机投票
-        other_players = [p for p in voting_targets if p.player_id != player.player_id]
-        if other_players:
-            target = random.choice(other_players).player_id
+        # 调用 Agent 投票逻辑
+        agent = create_agent_by_role(player.player_id, player.name, player.role)
+        target = await agent.vote(state, vote_type="exile")
+        if target:
             votes[player.player_id] = target
             target_name = next((p.name for p in alive_players if p.player_id == target), f"玩家{target}")
             print(f"  {player.name} 投票给 {target_name}")
+        else:
+            print(f"  {player.name} 弃权")
     
     # 统计投票结果
     vote_results = {}

@@ -48,7 +48,7 @@ class GameState(TypedDict):
     sheriff_tied_candidates: List[int]  # 警长投票平票的候选人ID列表
     sheriff_withdrawn: List[int]  # 退水的玩家ID列表
     # 角色特殊能力相关
-    seer_checks: Dict[int, str]  # 预言家查验结果 {target_id: role}
+    seer_checks: Dict[int, str]  # 预言家查验结果 {target_id: "好人" 或 "狼人"}
     witch_antidote_used: bool  # 女巫解药是否已使用
     witch_poison_used: bool  # 女巫毒药是否已使用
     guard_protected: Optional[int]  # 守卫守护的玩家ID（上一晚）

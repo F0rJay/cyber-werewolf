@@ -97,13 +97,17 @@ class SeerAgent(BaseAgent):
             target_id: 目标玩家ID
         
         Returns:
-            查验结果 {"target_id": "role"}
+            查验结果 {"target_id": "好人" 或 "狼人"}
         """
         players = game_state.get("players", [])
         target_player = next((p for p in players if p.player_id == target_id), None)
         
         if target_player:
-            result = {target_id: target_player.role}
+            # 预言家只能知道是好人还是狼人，不能知道具体身份
+            if target_player.role == "werewolf":
+                result = {target_id: "狼人"}
+            else:
+                result = {target_id: "好人"}
             self.check_history.append(result)
             return result
         return {}

@@ -99,17 +99,11 @@ def build_seer_prompt(
     
     # 格式化已查验的玩家
     checked_info = []
-    for target_id, role in seer_checks.items():
+    for target_id, result in seer_checks.items():
         target_player = next((p for p in players if p.player_id == target_id), None)
         if target_player:
-            role_cn = {
-                "villager": "村民",
-                "werewolf": "狼人",
-                "seer": "预言家",
-                "witch": "女巫",
-                "guard": "守卫"
-            }.get(role, role)
-            checked_info.append(f"玩家{target_id} ({target_player.name}) - {role_cn}")
+            # 预言家只能知道是好人还是狼人
+            checked_info.append(f"玩家{target_id} ({target_player.name}) - {result}")
     
     system_prompt = """你是一名狼人杀游戏中的预言家。你的能力是每晚可以查验一名玩家的身份（好人/狼人）。
 
@@ -445,6 +439,235 @@ def build_werewolf_explode_prompt(
 当前发言阶段，请分析情况，决定是否自爆。请返回你的决策，包括：
 1. 推理过程
 2. 是否自爆（True/False）
+3. 置信度（0-1）
+4. 决策理由"""
+    
+    return system_prompt, user_prompt
+
+
+def build_speak_prompt(
+    agent_id: int,
+    agent_name: str,
+    agent_role: str,
+    game_state: Dict[str, Any],
+    observation: Dict[str, Any],
+    context: str = "normal"  # "normal", "sheriff_campaign", "sheriff_pk"
+) -> tuple[str, str]:
+    """
+    构建玩家发言的 prompt
+    
+    Args:
+        agent_id: Agent ID
+        agent_name: Agent 名称
+        agent_role: Agent 角色
+        game_state: 游戏状态
+        observation: Agent 观察到的信息
+        context: 发言上下文（normal=正常发言, sheriff_campaign=警长竞选, sheriff_pk=警长PK）
+    
+    Returns:
+        (system_prompt, user_prompt)
+    """
+    players = game_state.get("players", [])
+    alive_players = [p for p in players if p.is_alive]
+    day_number = game_state.get("day_number", 1)
+    
+    role_cn = {
+        "villager": "村民",
+        "werewolf": "狼人",
+        "seer": "预言家",
+        "witch": "女巫",
+        "guard": "守卫"
+    }.get(agent_role, agent_role)
+    
+    # 根据上下文构建不同的 system prompt
+    if context == "sheriff_campaign":
+        system_prompt = f"""你是狼人杀游戏中的{role_cn}（玩家{agent_id} - {agent_name}）。你正在警长竞选阶段发言。
+
+发言规则：
+- 你需要说明为什么竞选警长，以及你的优势
+- 可以分析当前局势，表达你的观点
+- 发言后可以选择"退水"（退出竞选）或继续竞选
+- 发言应该真实、有逻辑，符合你的角色身份
+
+请根据当前情况，进行警长竞选发言。"""
+    elif context == "sheriff_pk":
+        system_prompt = f"""你是狼人杀游戏中的{role_cn}（玩家{agent_id} - {agent_name}）。你正在警长投票平票PK发言阶段。
+
+发言规则：
+- 你需要与平票的候选人进行PK发言
+- 需要说明为什么你应该当选警长
+- 可以分析对手的问题，表达你的优势
+- 发言应该真实、有逻辑，符合你的角色身份
+
+请根据当前情况，进行PK发言。"""
+    else:
+        system_prompt = f"""你是狼人杀游戏中的{role_cn}（玩家{agent_id} - {agent_name}）。你正在白天发言阶段。
+
+发言规则：
+- 你需要分析当前局势，表达你的观点
+- 可以质疑其他玩家，为自己辩护
+- 发言应该真实、有逻辑，符合你的角色身份
+- 如果你是好人，需要帮助找出狼人
+- 如果你是狼人，需要隐藏身份，误导好人
+
+请根据当前情况，进行发言。"""
+    
+    # 获取最近的发言记录
+    discussions = game_state.get("discussions", [])
+    recent_discussions = discussions[-5:] if len(discussions) > 5 else discussions
+    
+    discussion_text = ""
+    if recent_discussions:
+        discussion_lines = []
+        for d in recent_discussions:
+            speaker_name = d.get("player_name", "?")
+            content = d.get("content", "")
+            discussion_lines.append(f"{speaker_name}: {content}")
+        discussion_text = "\n".join(discussion_lines)
+    
+    user_prompt = f"""当前游戏状态：
+
+你的身份：{role_cn}（玩家{agent_id} - {agent_name}）
+
+存活玩家：
+{format_player_info(alive_players)}
+
+当前是第{day_number}天
+
+最近的发言记录：
+{discussion_text if discussion_text else "暂无发言记录"}
+
+游戏历史：
+{format_game_history(game_state.get("history", []))}
+
+请根据当前情况，进行发言。发言应该：
+1. 分析当前局势
+2. 表达你的观点和推理
+3. 符合你的角色身份
+4. 真实、有逻辑
+
+请返回你的发言内容。"""
+    
+    return system_prompt, user_prompt
+
+
+def build_vote_prompt(
+    agent_id: int,
+    agent_name: str,
+    agent_role: str,
+    game_state: Dict[str, Any],
+    observation: Dict[str, Any],
+    vote_type: str = "exile",  # "exile", "sheriff"
+    candidates: Optional[List[int]] = None
+) -> tuple[str, str]:
+    """
+    构建玩家投票的 prompt
+    
+    Args:
+        agent_id: Agent ID
+        agent_name: Agent 名称
+        agent_role: Agent 角色
+        game_state: 游戏状态
+        observation: Agent 观察到的信息
+        vote_type: 投票类型（exile=放逐投票, sheriff=警长投票）
+        candidates: 候选人列表（仅用于警长投票）
+    
+    Returns:
+        (system_prompt, user_prompt)
+    """
+    players = game_state.get("players", [])
+    alive_players = [p for p in players if p.is_alive]
+    day_number = game_state.get("day_number", 1)
+    
+    role_cn = {
+        "villager": "村民",
+        "werewolf": "狼人",
+        "seer": "预言家",
+        "witch": "女巫",
+        "guard": "守卫"
+    }.get(agent_role, agent_role)
+    
+    if vote_type == "sheriff":
+        # 警长投票
+        if candidates:
+            candidate_players = [p for p in alive_players if p.player_id in candidates]
+        else:
+            candidate_players = []
+        
+        system_prompt = f"""你是狼人杀游戏中的{role_cn}（玩家{agent_id} - {agent_name}）。你正在警长投票阶段。
+
+投票规则：
+- 你需要从候选人中选择一个作为警长
+- 警长拥有1.5票的投票权，且可以选择发言顺序
+- 需要根据候选人的发言和表现做出决策
+- 不能投票给自己（如果你不是候选人）
+
+请根据候选人的表现，决定投票给谁。"""
+        
+        user_prompt = f"""当前游戏状态：
+
+你的身份：{role_cn}（玩家{agent_id} - {agent_name}）
+
+警长候选人：
+{format_player_info(candidate_players) if candidate_players else "无候选人"}
+
+存活玩家：
+{format_player_info(alive_players)}
+
+当前是第{day_number}天
+
+游戏历史：
+{format_game_history(game_state.get("history", []))}
+
+请根据候选人的发言和表现，决定投票给哪个候选人。请返回你的决策，包括：
+1. 推理过程
+2. 目标候选人ID（如果不投票则返回None）
+3. 置信度（0-1）
+4. 决策理由"""
+    else:
+        # 放逐投票
+        tie_vote_round = game_state.get("tie_vote_round", 0)
+        tied_players = game_state.get("tied_players", [])
+        
+        if tie_vote_round > 0 and tied_players:
+            # 平票重议，只能投票给平票的玩家
+            voting_targets = [p for p in alive_players if p.player_id in tied_players]
+            vote_context = f"平票重议第{tie_vote_round}轮，只能投票给平票的玩家"
+        else:
+            # 正常投票
+            voting_targets = [p for p in alive_players if p.player_id != agent_id]
+            vote_context = "正常放逐投票"
+        
+        system_prompt = f"""你是狼人杀游戏中的{role_cn}（玩家{agent_id} - {agent_name}）。你正在放逐投票阶段。
+
+投票规则：
+- 你需要投票决定放逐哪个玩家
+- 得票最多的玩家被放逐
+- 需要根据发言和游戏表现做出决策
+- 不能投票给自己
+
+请根据当前情况，决定投票放逐哪个玩家。"""
+        
+        user_prompt = f"""当前游戏状态：
+
+你的身份：{role_cn}（玩家{agent_id} - {agent_name}）
+
+投票上下文：{vote_context}
+
+可投票的目标玩家：
+{format_player_info(voting_targets) if voting_targets else "无目标玩家"}
+
+存活玩家：
+{format_player_info(alive_players)}
+
+当前是第{day_number}天
+
+游戏历史：
+{format_game_history(game_state.get("history", []))}
+
+请根据发言和游戏表现，决定投票放逐哪个玩家。请返回你的决策，包括：
+1. 推理过程
+2. 目标玩家ID（如果不投票则返回None）
 3. 置信度（0-1）
 4. 决策理由"""
     

@@ -1,15 +1,16 @@
 """
 村民 Agent
 """
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from .base_agent import BaseAgent, AgentAction
+from ..utils.llm_client import LLMClient
 
 
 class VillagerAgent(BaseAgent):
     """村民角色 Agent"""
     
-    def __init__(self, agent_id: int, name: str):
-        super().__init__(agent_id, "villager", name)
+    def __init__(self, agent_id: int, name: str, llm_client=None):
+        super().__init__(agent_id, "villager", name, llm_client)
     
     async def observe(self, game_state: Dict[str, Any]) -> Dict[str, Any]:
         """村民只能看到公共信息"""

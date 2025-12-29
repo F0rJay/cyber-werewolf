@@ -37,3 +37,19 @@ class AgentAction(BaseModel):
             }
         }
 
+
+class SpeakDecision(BaseModel):
+    """发言决策（结构化输出）"""
+    thought: str = Field(description="推理过程")
+    content: str = Field(description="发言内容")
+    confidence: float = Field(description="置信度（0-1）", ge=0.0, le=1.0)
+    reasoning: str = Field(description="发言理由")
+
+
+class VoteDecision(BaseModel):
+    """投票决策（结构化输出）"""
+    thought: str = Field(description="推理过程")
+    target_id: Optional[int] = Field(default=None, description="目标玩家ID（如果不投票则返回None）")
+    confidence: float = Field(description="置信度（0-1）", ge=0.0, le=1.0)
+    reasoning: str = Field(description="决策理由")
+
