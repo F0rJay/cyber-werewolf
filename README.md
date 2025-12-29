@@ -111,8 +111,8 @@ python examples/test_deepseek.py
 - [x] 屠边规则
 - [x] 角色技能系统（预言家、女巫、守卫、狼人）
 - [x] Agent LLM 集成（技能决策）
-- [ ] 发言系统 LLM 集成
-- [ ] 投票系统 LLM 集成
+- [x] 发言系统 LLM 集成
+- [x] 投票系统 LLM 集成
 - [ ] 测试用例完善
 
 ## 技术栈
