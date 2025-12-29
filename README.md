@@ -46,6 +46,8 @@ cyber-werewolf/
 ├── examples/               # 示例代码
 │   ├── run_game.py         # 完整游戏运行
 │   └── test_deepseek.py    # DeepSeek API 测试
+├── run_tests.py            # 测试运行脚本（Python）
+├── run_tests.sh            # 测试运行脚本（Shell）
 ├── docs/                   # 文档
 │   ├── LLM_CONFIG.md       # LLM 配置说明
 │   ├── QUICKSTART.md       # 快速开始指南
