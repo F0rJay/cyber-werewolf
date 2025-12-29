@@ -47,29 +47,41 @@ echo "📊 测试执行摘要"
 echo "======================================================================"
 echo ""
 
-# 解析测试结果
-PASSED=$(python3 -m pytest tests/ -v --tb=no 2>/dev/null | grep -c "PASSED" || echo "0")
-FAILED=$(python3 -m pytest tests/ -v --tb=no 2>/dev/null | grep -c "FAILED" || echo "0")
-SKIPPED=$(python3 -m pytest tests/ -v --tb=no 2>/dev/null | grep -c "SKIPPED" || echo "0")
-ERROR=$(python3 -m pytest tests/ -v --tb=no 2>/dev/null | grep -c "ERROR" || echo "0")
+# 解析测试结果（确保变量是数字，去除可能的空格和换行符）
+PASSED=$(python3 -m pytest tests/ -v --tb=no 2>/dev/null | grep -c "PASSED" 2>/dev/null || echo "0")
+FAILED=$(python3 -m pytest tests/ -v --tb=no 2>/dev/null | grep -c "FAILED" 2>/dev/null || echo "0")
+SKIPPED=$(python3 -m pytest tests/ -v --tb=no 2>/dev/null | grep -c "SKIPPED" 2>/dev/null || echo "0")
+ERROR=$(python3 -m pytest tests/ -v --tb=no 2>/dev/null | grep -c "ERROR" 2>/dev/null || echo "0")
+
+# 确保变量是整数（去除空格和换行符）
+PASSED=$(echo "$PASSED" | tr -d '[:space:]' || echo "0")
+FAILED=$(echo "$FAILED" | tr -d '[:space:]' || echo "0")
+SKIPPED=$(echo "$SKIPPED" | tr -d '[:space:]' || echo "0")
+ERROR=$(echo "$ERROR" | tr -d '[:space:]' || echo "0")
+
+# 如果变量为空，设置为0
+PASSED=${PASSED:-0}
+FAILED=${FAILED:-0}
+SKIPPED=${SKIPPED:-0}
+ERROR=${ERROR:-0}
 
 TOTAL=$((PASSED + FAILED + SKIPPED + ERROR))
 
 echo "总计: $TOTAL 个测试"
 echo "  ✅ 通过: $PASSED"
-if [ $FAILED -gt 0 ]; then
+if [ "$FAILED" -gt 0 ]; then
     echo "  ❌ 失败: $FAILED"
 fi
-if [ $SKIPPED -gt 0 ]; then
+if [ "$SKIPPED" -gt 0 ]; then
     echo "  ⏭️  跳过: $SKIPPED"
 fi
-if [ $ERROR -gt 0 ]; then
+if [ "$ERROR" -gt 0 ]; then
     echo "  ⚠️  错误: $ERROR"
 fi
 echo ""
 
 # 显示失败的测试
-if [ $FAILED -gt 0 ] || [ $ERROR -gt 0 ]; then
+if [ "$FAILED" -gt 0 ] || [ "$ERROR" -gt 0 ]; then
     echo "======================================================================"
     echo "❌ 失败的测试"
     echo "======================================================================"
