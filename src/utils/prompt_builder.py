@@ -673,3 +673,77 @@ def build_vote_prompt(
     
     return system_prompt, user_prompt
 
+
+def build_last_words_prompt(
+    agent_id: int,
+    agent_name: str,
+    agent_role: str,
+    game_state: Dict[str, Any],
+    observation: Dict[str, Any],
+    death_reason: str  # "night_first" 或 "exile"
+) -> tuple[str, str]:
+    """
+    构建遗言 prompt
+    
+    Args:
+        agent_id: Agent ID
+        agent_name: Agent 名称
+        agent_role: Agent 角色
+        game_state: 游戏状态
+        observation: Agent 观察到的信息
+        death_reason: 出局原因（"night_first"=第一天夜里出局, "exile"=被放逐）
+    
+    Returns:
+        (system_prompt, user_prompt)
+    """
+    players = game_state.get("players", [])
+    alive_players = [p for p in players if p.is_alive]
+    day_number = game_state.get("day_number", 1)
+    
+    role_cn = {
+        "villager": "村民",
+        "werewolf": "狼人",
+        "seer": "预言家",
+        "witch": "女巫",
+        "guard": "守卫"
+    }.get(agent_role, agent_role)
+    
+    if death_reason == "night_first":
+        context = "第一天夜里出局"
+    else:
+        context = "被放逐出局"
+    
+    system_prompt = f"""你是狼人杀游戏中的{role_cn}（玩家{agent_id} - {agent_name}）。你刚刚{context}，现在需要留下遗言。
+
+遗言规则：
+- 遗言是你最后一次向其他玩家传递信息的机会
+- 可以分析局势，指出可疑的玩家
+- 可以为自己辩护，或者为队友提供信息
+- 遗言应该真实、有逻辑，符合你的角色身份
+- 如果你是好人，可以帮助好人阵营找出狼人
+- 如果你是狼人，可以误导好人，保护队友
+
+请根据当前情况，留下你的遗言。"""
+    
+    user_prompt = f"""当前游戏状态：
+
+你的身份：{role_cn}（玩家{agent_id} - {agent_name}）
+出局原因：{context}
+当前是第{day_number}天
+
+存活玩家：
+{format_player_info(alive_players)}
+
+游戏历史：
+{format_game_history(game_state.get("history", []))}
+
+请根据当前情况，留下你的遗言。遗言应该：
+1. 分析当前局势
+2. 表达你的观点和推理
+3. 符合你的角色身份
+4. 真实、有逻辑
+
+请返回你的遗言内容。"""
+    
+    return system_prompt, user_prompt
+
