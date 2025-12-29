@@ -281,7 +281,7 @@ async def night_phase_node(state: GameState) -> Dict[str, Any]:
     # 玩家将在"公布出局玩家"阶段才真正出局
     # 这样被刀的玩家在第二天白天仍可以参与警长竞选、发言、投票等，直到公布出局
     
-    # 记录夜晚行动
+    # 记录夜晚行动（返回单个历史记录项作为列表，以便 LangGraph 合并）
     history_entry = {
         "type": "night_action",
         "day": day_number,
@@ -290,13 +290,10 @@ async def night_phase_node(state: GameState) -> Dict[str, Any]:
         "guard_protected": guard_protected_tonight,
     }
     
-    current_history = state.get("history", [])
-    current_history.append(history_entry)
-    
     # 准备返回的更新（不更新players，保持玩家存活状态）
     updates = {
         "night_actions": night_actions,
-        "history": current_history,
+        "history": [history_entry],  # 返回单个历史记录项作为列表
         "current_phase": "day",
         "guard_protected": state.get("guard_protected_tonight"),  # 更新为上一晚
         "guard_protected_tonight": guard_protected_tonight,  # 今晚守护的
@@ -728,7 +725,7 @@ async def discussion_node(state: GameState) -> Dict[str, Any]:
                     else:
                         updated_players.append(p)
                 
-                # 记录历史
+                # 记录历史（返回单个历史记录项作为列表，以便 LangGraph 合并）
                 history_entry = {
                     "type": "self_explode",
                     "day": day_number,
@@ -736,13 +733,11 @@ async def discussion_node(state: GameState) -> Dict[str, Any]:
                     "player_name": player.name,
                     "role": player.role,
                 }
-                current_history = state.get("history", [])
-                current_history.append(history_entry)
                 
                 return {
                     "self_exploded": player.player_id,
                     "players": updated_players,
-                    "history": current_history,
+                    "history": [history_entry],  # 返回单个历史记录项作为列表
                     "current_phase": "night",  # 自爆后直接进入黑夜
                 }
         
@@ -765,18 +760,16 @@ async def discussion_node(state: GameState) -> Dict[str, Any]:
     current_discussions = state.get("discussions", [])
     current_discussions.extend(discussions)
     
+    # 记录历史（返回单个历史记录项作为列表，以便 LangGraph 合并）
     history_entry = {
         "type": "discussion",
         "day": day_number,
         "discussions": discussions,
     }
     
-    current_history = state.get("history", [])
-    current_history.append(history_entry)
-    
     return {
         "discussions": current_discussions,
-        "history": current_history,
+        "history": [history_entry],  # 返回单个历史记录项作为列表
     }
 
 
@@ -824,6 +817,7 @@ async def exile_voting_node(state: GameState) -> Dict[str, Any]:
         max_votes = max(vote_results.values())
         eliminated_players = [pid for pid, votes in vote_results.items() if votes == max_votes]
         
+        # 记录历史（返回单个历史记录项作为列表，以便 LangGraph 合并）
         history_entry = {
             "type": "exile_voting",
             "day": day_number,
@@ -834,13 +828,10 @@ async def exile_voting_node(state: GameState) -> Dict[str, Any]:
             "tie_vote_round": tie_vote_round,
         }
         
-        current_history = state.get("history", [])
-        current_history.append(history_entry)
-        
         updates = {
             "votes": votes,
             "vote_results": vote_results,
-            "history": current_history,
+            "history": [history_entry],  # 返回单个历史记录项作为列表
         }
         
         if len(eliminated_players) == 1:
@@ -964,7 +955,7 @@ async def judgment_node(state: GameState) -> Dict[str, Any]:
         game_status = "ended"
         print(f"  ✅ 狼人获胜！（神职全部出局）")
     
-    # 记录结果
+    # 记录结果（返回单个历史记录项作为列表，以便 LangGraph 合并）
     if game_status == "ended":
         history_entry = {
             "type": "game_end",
@@ -975,12 +966,10 @@ async def judgment_node(state: GameState) -> Dict[str, Any]:
             "alive_villagers": len(villagers),
             "alive_gods": len(gods),
         }
-        current_history = state.get("history", [])
-        current_history.append(history_entry)
         return {
             "game_status": game_status,
             "winner": winner,
-            "history": current_history,
+            "history": [history_entry],  # 返回单个历史记录项作为列表
         }
     
     return {}

@@ -1,9 +1,10 @@
 """
 游戏状态定义
 """
-from typing import List, Dict, Any, Optional, Literal
+from typing import List, Dict, Any, Optional, Literal, Annotated
 from typing_extensions import TypedDict
 from pydantic import BaseModel
+import operator
 
 
 class Player(BaseModel):
@@ -26,7 +27,7 @@ class GameState(TypedDict):
     winner: Optional[str]
     public_info: Dict[str, Any]
     werewolf_channel: Dict[str, Any]
-    history: List[Dict[str, Any]]
+    history: Annotated[List[Dict[str, Any]], operator.add]  # 允许多个节点追加历史记录
     # 投票相关
     votes: Dict[int, int]  # {voter_id: target_id}
     vote_results: Dict[int, int]  # {target_id: vote_count}
