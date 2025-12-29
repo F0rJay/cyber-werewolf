@@ -418,14 +418,15 @@ async def announce_death_node(state: GameState) -> Dict[str, Any]:
                 }
                 print(f"      ❌ 警长 {player.name} 销毁警徽，本局没有警长")
     
-    # 返回更新的玩家列表和相关信息
-    result = {
-        "players": updated_players,
-        "last_words": last_words,
-    }
-    if sheriff_transfer_info:
-        result["sheriff_transfer"] = sheriff_transfer_info
-    
+    if killed_players:
+        # 返回更新的玩家列表和相关信息
+        result = {
+            "players": updated_players,
+            "last_words": last_words,
+        }
+        if sheriff_transfer_info:
+            result["sheriff_transfer"] = sheriff_transfer_info
+        
         return result
     else:
         print("  ✅ 平安夜（无人出局）")
