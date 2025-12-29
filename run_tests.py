@@ -76,7 +76,16 @@ def print_test_summary(results, tests):
             parts = test_path.split('::')
             file_name = parts[0]
             test_name = parts[-1]
-            status = results['test_map'].get(test_path, 'UNKNOWN')
+            # 尝试匹配测试路径
+            status = results['test_map'].get(test_path, None)
+            # 如果直接匹配失败，尝试通过测试名称匹配
+            if status is None:
+                for full_path, full_status in results['test_map'].items():
+                    if full_path.endswith(f"::{test_name}"):
+                        status = full_status
+                        break
+            if status is None:
+                status = 'UNKNOWN'
             test_files[file_name].append((test_name, status))
     
     # 显示每个测试文件的结果
@@ -115,6 +124,8 @@ def print_test_summary(results, tests):
             print(f"  ⏭️  跳过: {skipped} ({skipped*100//total}%)")
         if error > 0:
             print(f"  ⚠️  错误: {error} ({error*100//total}%)")
+    else:
+        print("⚠️  未能解析测试结果")
     print()
 
 def main():
