@@ -45,10 +45,38 @@ async def test_game_workflow():
 async def test_role_assignment_node():
     """测试身份分配节点"""
     from src.graph.nodes import role_assignment_node
+    from src.state.game_state import GameState
     
-    state = {
+    state: GameState = {
         "players": [],
-        "game_status": "playing"
+        "current_phase": "day",
+        "round_number": 0,
+        "day_number": 0,
+        "game_status": "playing",
+        "winner": None,
+        "public_info": {},
+        "werewolf_channel": {},
+        "history": [],
+        "votes": {},
+        "vote_results": {},
+        "night_actions": {},
+        "max_rounds": 10,
+        "consecutive_ties": 0,
+        "tie_vote_round": 0,
+        "tied_players": [],
+        "sheriff_candidates": [],
+        "sheriff_votes": {},
+        "sheriff_vote_round": 0,
+        "sheriff_tied_candidates": [],
+        "sheriff_withdrawn": [],
+        "sheriff_transfer": None,
+        "seer_checks": {},
+        "witch_antidote_used": False,
+        "witch_poison_used": False,
+        "guard_protected": None,
+        "guard_protected_tonight": None,
+        "self_exploded": None,
+        "last_words": {},
     }
     
     result = await role_assignment_node(state)
