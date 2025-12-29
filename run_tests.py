@@ -27,6 +27,11 @@ def collect_tests(project_root):
     
     return tests
 
+def strip_ansi_codes(text):
+    """移除 ANSI 转义码"""
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    return ansi_escape.sub('', text)
+
 def parse_test_results(output):
     """解析测试结果"""
     results = {
@@ -37,11 +42,15 @@ def parse_test_results(output):
         'test_map': {}  # 完整路径 -> 状态
     }
     
+    # 移除 ANSI 转义码
+    clean_output = strip_ansi_codes(output)
+    
     # 解析测试结果行
     # 格式: tests/test_xxx.py::test_function PASSED [ 10%]
+    # 注意：可能包含 ANSI 转义码，所以需要更宽松的匹配
     test_pattern = r'(tests/[^:]+::[^\s]+)\s+(\w+)(?:\s+\[.*?\])?'
     
-    for line in output.split('\n'):
+    for line in clean_output.split('\n'):
         match = re.search(test_pattern, line)
         if match:
             test_path = match.group(1)
