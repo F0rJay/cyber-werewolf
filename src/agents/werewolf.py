@@ -160,6 +160,8 @@ class WerewolfAgent(BaseAgent):
         """
         决定是否自爆
         
+        注意：警长不能自爆（即使警长是狼人）
+        
         Args:
             game_state: 游戏状态
             current_speaker_id: 当前发言玩家ID（如果是自己发言时）
@@ -167,6 +169,12 @@ class WerewolfAgent(BaseAgent):
         Returns:
             是否自爆
         """
+        # 检查是否是警长，警长不能自爆
+        players = game_state.get("players", [])
+        current_player = next((p for p in players if p.player_id == self.agent_id), None)
+        if current_player and current_player.is_sheriff:
+            # 警长不能自爆
+            return False
         # 构建 prompt
         from ...utils.prompt_builder import build_werewolf_explode_prompt
         system_prompt, user_prompt = build_werewolf_explode_prompt(

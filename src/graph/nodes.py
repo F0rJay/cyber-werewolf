@@ -593,16 +593,15 @@ async def discussion_node(state: GameState) -> Dict[str, Any]:
     
     alive_players = [p for p in state["players"] if p.is_alive]
     
-    # 检查是否有警长，如果有则警长选择发言顺序
-    sheriff = next((p for p in alive_players if p.is_sheriff), None)
-    if sheriff:
-        print(f"  👮 警长 {sheriff.name} 选择发言顺序")
-        # TODO: 调用警长 Agent 选择发言顺序
-        # 目前随机顺序
-        random.shuffle(alive_players)
-        # 警长可以选择自爆
-        # TODO: 调用警长 Agent 决定是否自爆
-    else:
+        # 检查是否有警长，如果有则警长选择发言顺序
+        sheriff = next((p for p in alive_players if p.is_sheriff), None)
+        if sheriff:
+            print(f"  👮 警长 {sheriff.name} 选择发言顺序")
+            # TODO: 调用警长 Agent 选择发言顺序
+            # 目前随机顺序
+            random.shuffle(alive_players)
+            # 注意：警长不能自爆（即使警长是狼人）
+        else:
         # 无警长，随机顺序
         random.shuffle(alive_players)
     
@@ -623,8 +622,8 @@ async def discussion_node(state: GameState) -> Dict[str, Any]:
         # 创建对应角色的 Agent
         agent = create_agent_by_role(player.player_id, player.name, player.role)
         
-        # 狼人可以随时自爆
-        if player.role == "werewolf":
+        # 只有狼人可以自爆，且警长不能自爆
+        if player.role == "werewolf" and not player.is_sheriff:
             # 调用狼人 Agent 决定是否自爆
             will_explode = await agent.decide_self_explode(state, player.player_id)
             if will_explode:
