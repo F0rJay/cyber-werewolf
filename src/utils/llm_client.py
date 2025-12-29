@@ -175,11 +175,15 @@ class StructuredLLMWrapper:
                 default = None
                 if hasattr(field_info, 'default'):
                     default = field_info.default
-                    # 检查是否是 Pydantic 的默认值标记
-                    from pydantic import PydanticUndefined
-                    if default is not PydanticUndefined and default is not None:
-                        mapped_data[field_name] = default
-                        continue
+                    # 检查是否是有效的默认值（不是 None 且不是 Pydantic 的特殊标记）
+                    # 使用字符串比较来避免导入问题
+                    if default is not None and str(type(default).__name__) != 'PydanticUndefinedType':
+                        try:
+                            # 尝试使用默认值
+                            mapped_data[field_name] = default
+                            continue
+                        except:
+                            pass
                 
                 # 如果没有默认值且字段是必需的，设置合理的默认值
                 if field_name == 'thought':
