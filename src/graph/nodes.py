@@ -339,6 +339,22 @@ async def announce_death_node(state: GameState) -> Dict[str, Any]:
     if last_night_action:
         killed_players = last_night_action.get("killed", [])
     
+    # 真正淘汰被杀的玩家（在公布出局阶段）
+    updated_players = []
+    for p in state["players"]:
+        if p.player_id in killed_players:
+            updated_p = Player(
+                player_id=p.player_id,
+                name=p.name,
+                role=p.role,
+                is_alive=False,
+                vote_target=p.vote_target,
+                is_sheriff=p.is_sheriff
+            )
+            updated_players.append(updated_p)
+        else:
+            updated_players.append(p)
+    
     if killed_players:
         print("  出局玩家：")
         last_words = state.get("last_words", {})
@@ -410,10 +426,10 @@ async def announce_death_node(state: GameState) -> Dict[str, Any]:
     if sheriff_transfer_info:
         result["sheriff_transfer"] = sheriff_transfer_info
     
-    return result
-else:
-    print("  ✅ 平安夜（无人出局）")
-    return {}
+        return result
+    else:
+        print("  ✅ 平安夜（无人出局）")
+        return {}
 
 
 async def sheriff_campaign_node(state: GameState) -> Dict[str, Any]:
