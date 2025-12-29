@@ -82,15 +82,18 @@
 
 ### 5. LLM 集成层
 
-**职责**: 封装 LLM 调用
+**职责**: 封装 LLM 调用和 Prompt 构建
 
 **关键文件**:
 - `src/utils/llm_client.py`: LLM 客户端
+- `src/utils/prompt_builder.py`: Prompt 构建工具
 
 **设计特点**:
 - 支持多 LLM 提供商（DeepSeek/OpenAI）
-- 结构化输出支持
+- 结构化输出支持（Pydantic Schema）
 - 错误处理和重试
+- 游戏状态自动格式化为 LLM 可理解的文本
+- 为每个角色和决策场景提供专门的 prompt 构建函数
 
 ## 数据流
 

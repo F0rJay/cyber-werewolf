@@ -1,7 +1,7 @@
 """
 预言家 Agent
 """
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from ..base_agent import BaseAgent
 from ...schemas.actions import AgentAction
 
@@ -29,7 +29,7 @@ class SeerAgent(BaseAgent):
     
     async def act(self, observation: Dict[str, Any]) -> AgentAction:
         """预言家的行动（查验）"""
-        # TODO: 使用 LLM 决定查验目标
+        # 这个方法主要用于通用行动，实际查验通过 check_player 方法
         return AgentAction(
             thought="我需要查验一名可疑的玩家",
             action_type="check",
@@ -37,6 +37,56 @@ class SeerAgent(BaseAgent):
             confidence=0.5,
             reasoning="基于观察和推理"
         )
+    
+    async def decide_check_target(self, game_state: Dict[str, Any]) -> Optional[int]:
+        """
+        使用 LLM 决定查验目标
+        
+        Args:
+            game_state: 游戏状态
+        
+        Returns:
+            目标玩家ID，如果不查验则返回 None
+        """
+        observation = await self.observe(game_state)
+        
+        # 构建 prompt
+        from ...utils.prompt_builder import build_seer_prompt
+        system_prompt, user_prompt = build_seer_prompt(
+            self.agent_id,
+            self.name,
+            game_state,
+            observation
+        )
+        
+        # 获取结构化输出的 LLM
+        structured_llm = self.llm_client.get_structured_llm(AgentAction)
+        
+        try:
+            # 调用 LLM（使用 LangChain 消息格式）
+            from langchain_core.messages import SystemMessage, HumanMessage
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt)
+            ]
+            action = await structured_llm.ainvoke(messages)
+            
+            # 验证返回的 action
+            if action.action_type == "check" and action.target:
+                # 验证目标玩家是否存在且存活
+                players = game_state.get("players", [])
+                target_player = next(
+                    (p for p in players if p.player_id == action.target and p.is_alive),
+                    None
+                )
+                if target_player and target_player.player_id != self.agent_id:
+                    return action.target
+            
+            return None
+        except Exception as e:
+            # LLM 调用失败，返回 None
+            print(f"⚠️  预言家 {self.name} LLM 调用失败: {e}")
+            return None
     
     async def check_player(self, game_state: Dict[str, Any], target_id: int) -> Dict[str, str]:
         """

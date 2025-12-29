@@ -56,11 +56,53 @@ class GuardAgent(BaseAgent):
         if not targets:
             return None
         
-        # TODO: 调用 LLM 决定守护目标
-        # 目前模拟：随机选择
-        import random
-        target = random.choice(targets)
-        return target.player_id
+        # 构建 prompt
+        from ...utils.prompt_builder import build_guard_prompt
+        observation = await self.observe(game_state)
+        system_prompt, user_prompt = build_guard_prompt(
+            self.agent_id,
+            self.name,
+            game_state,
+            observation,
+            last_protected_id
+        )
+        
+        # 定义守护决策的 Schema
+        from pydantic import BaseModel, Field
+        class GuardDecision(BaseModel):
+            thought: str = Field(description="推理过程")
+            target_id: Optional[int] = Field(default=None, description="目标玩家ID（如果不守护则返回None）")
+            confidence: float = Field(description="置信度（0-1）", ge=0.0, le=1.0)
+            reasoning: str = Field(description="决策理由")
+        
+        try:
+            # 获取结构化输出的 LLM
+            structured_llm = self.llm_client.get_structured_llm(GuardDecision)
+            
+            # 调用 LLM（使用 LangChain 消息格式）
+            from langchain_core.messages import SystemMessage, HumanMessage
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt)
+            ]
+            decision = await structured_llm.ainvoke(messages)
+            
+            if decision.target_id:
+                # 验证目标玩家是否存在且符合规则
+                target_player = next(
+                    (p for p in targets if p.player_id == decision.target_id),
+                    None
+                )
+                if target_player:
+                    return decision.target_id
+            
+            return None
+        except Exception as e:
+            # LLM 调用失败，随机选择
+            print(f"⚠️  守卫 {self.name} 守护决策 LLM 调用失败: {e}")
+            import random
+            target = random.choice(targets)
+            return target.player_id
 
 
 async def create_guard_agent(agent_id: int, name: str, llm_client=None) -> GuardAgent:

@@ -146,10 +146,10 @@ async def night_phase_node(state: GameState) -> Dict[str, Any]:
         # 获取可见信息
         observation = await seer_agent.observe(state)
         
-        # 调用 Agent 决定查验目标
-        action = await seer_agent.act(observation)
+        # 调用 Agent 决定查验目标（使用 LLM）
+        target_id = await seer_agent.decide_check_target(state)
         
-        if action.action_type == "check" and action.target:
+        if target_id:
             target_id = action.target
             target_player = next((p for p in alive_players if p.player_id == target_id), None)
             

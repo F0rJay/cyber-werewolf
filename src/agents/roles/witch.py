@@ -56,14 +56,45 @@ class WitchAgent(BaseAgent):
         if self.antidote_used or killed_player_id is None:
             return False
         
-        # TODO: 调用 LLM 决定
-        # 目前模拟逻辑：第一夜救自己，其他夜随机
-        if self.first_night and killed_player_id == self.agent_id:
-            return True
+        # 构建 prompt
+        from ...utils.prompt_builder import build_witch_antidote_prompt
+        observation = await self.observe(game_state)
+        system_prompt, user_prompt = build_witch_antidote_prompt(
+            self.agent_id,
+            self.name,
+            game_state,
+            observation,
+            killed_player_id
+        )
         
-        # 模拟：随机决定
-        import random
-        return random.choice([True, False])
+        # 定义解药决策的 Schema
+        from pydantic import BaseModel, Field
+        class AntidoteDecision(BaseModel):
+            thought: str = Field(description="推理过程")
+            use_antidote: bool = Field(description="是否使用解药")
+            confidence: float = Field(description="置信度（0-1）", ge=0.0, le=1.0)
+            reasoning: str = Field(description="决策理由")
+        
+        try:
+            # 获取结构化输出的 LLM
+            structured_llm = self.llm_client.get_structured_llm(AntidoteDecision)
+            
+            # 调用 LLM（使用 LangChain 消息格式）
+            from langchain_core.messages import SystemMessage, HumanMessage
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt)
+            ]
+            decision = await structured_llm.ainvoke(messages)
+            
+            return decision.use_antidote
+        except Exception as e:
+            # LLM 调用失败，使用默认逻辑
+            print(f"⚠️  女巫 {self.name} 解药决策 LLM 调用失败: {e}")
+            # 默认逻辑：第一夜救自己
+            if self.first_night and killed_player_id == self.agent_id:
+                return True
+            return False
     
     async def decide_poison(self, game_state: Dict[str, Any]) -> Optional[int]:
         """
@@ -78,7 +109,6 @@ class WitchAgent(BaseAgent):
         if self.poison_used:
             return None
         
-        # TODO: 调用 LLM 决定
         # 毒药不能给自己用
         alive_players = [p for p in game_state.get("players", []) if p.is_alive]
         targets = [p for p in alive_players if p.player_id != self.agent_id]
@@ -86,14 +116,51 @@ class WitchAgent(BaseAgent):
         if not targets:
             return None
         
-        # 模拟：随机决定（暂时不用毒药）
-        import random
-        use_poison = random.choice([False])  # 暂时不用
-        if use_poison:
-            target = random.choice(targets)
-            return target.player_id
+        # 构建 prompt
+        from ...utils.prompt_builder import build_witch_poison_prompt
+        observation = await self.observe(game_state)
+        system_prompt, user_prompt = build_witch_poison_prompt(
+            self.agent_id,
+            self.name,
+            game_state,
+            observation
+        )
         
-        return None
+        # 定义毒药决策的 Schema
+        from pydantic import BaseModel, Field
+        class PoisonDecision(BaseModel):
+            thought: str = Field(description="推理过程")
+            use_poison: bool = Field(description="是否使用毒药")
+            target_id: Optional[int] = Field(default=None, description="目标玩家ID（如果使用毒药）")
+            confidence: float = Field(description="置信度（0-1）", ge=0.0, le=1.0)
+            reasoning: str = Field(description="决策理由")
+        
+        try:
+            # 获取结构化输出的 LLM
+            structured_llm = self.llm_client.get_structured_llm(PoisonDecision)
+            
+            # 调用 LLM（使用 LangChain 消息格式）
+            from langchain_core.messages import SystemMessage, HumanMessage
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt)
+            ]
+            decision = await structured_llm.ainvoke(messages)
+            
+            if decision.use_poison and decision.target_id:
+                # 验证目标玩家是否存在且不是自己
+                target_player = next(
+                    (p for p in targets if p.player_id == decision.target_id),
+                    None
+                )
+                if target_player:
+                    return decision.target_id
+            
+            return None
+        except Exception as e:
+            # LLM 调用失败，返回 None（不使用毒药）
+            print(f"⚠️  女巫 {self.name} 毒药决策 LLM 调用失败: {e}")
+            return None
 
 
 async def create_witch_agent(agent_id: int, name: str, llm_client=None) -> WitchAgent:

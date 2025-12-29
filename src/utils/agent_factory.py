@@ -5,9 +5,7 @@ from typing import Dict, Optional
 from ..agents.base_agent import BaseAgent
 from ..agents.villager import VillagerAgent
 from ..agents.werewolf import WerewolfAgent
-from ..agents.roles.seer import SeerAgent
-from ..agents.roles.witch import WitchAgent
-from ..agents.roles.guard import GuardAgent
+from ..agents.roles import SeerAgent, WitchAgent, GuardAgent
 from ..utils.llm_client import LLMClient
 
 

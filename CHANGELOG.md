@@ -2,6 +2,51 @@
 
 本文档记录 Cyber-Werewolf 项目的所有重要变更。
 
+## [0.3.1] - 2024-12-29
+
+### 🤖 Agent LLM 完整集成
+
+#### 新增功能
+- **Prompt 构建工具** (`src/utils/prompt_builder.py`)
+  - 实现游戏状态格式化函数（`format_player_info`, `format_game_history`）
+  - 为所有角色实现专门的 prompt 构建函数
+  - 支持预言家、女巫、守卫、狼人的所有决策场景
+
+- **预言家 LLM 集成** (`src/agents/roles/seer.py`)
+  - 实现 `decide_check_target()` 方法，使用 LLM 决策查验目标
+  - 使用结构化输出（`AgentAction`）确保返回正确格式
+  - 验证目标玩家是否存在且存活
+
+- **女巫 LLM 集成** (`src/agents/roles/witch.py`)
+  - 更新 `decide_antidote()` 方法，使用 LLM 决策是否使用解药
+  - 更新 `decide_poison()` 方法，使用 LLM 决策是否使用毒药及目标
+  - 使用自定义 Schema（`AntidoteDecision`, `PoisonDecision`）进行结构化输出
+
+- **守卫 LLM 集成** (`src/agents/roles/guard.py`)
+  - 更新 `decide_protect()` 方法，使用 LLM 决策守护目标
+  - 使用自定义 Schema（`GuardDecision`）进行结构化输出
+  - 验证目标玩家是否符合规则（不能连续两晚守护同一人）
+
+- **狼人 LLM 集成** (`src/agents/werewolf.py`)
+  - 更新 `discuss_in_werewolf_channel()` 方法，使用 LLM 生成发言内容
+  - 更新 `vote_to_kill()` 方法，使用 LLM 决策攻击目标
+  - 更新 `decide_self_explode()` 方法，使用 LLM 决策是否自爆
+  - 使用自定义 Schema（`KillVoteDecision`, `ExplodeDecision`）进行结构化输出
+
+#### 改进
+- **错误处理**：所有 LLM 调用都包含异常处理，失败时使用默认逻辑
+- **代码一致性**：统一所有 Agent 的导入方式（函数内部导入）
+- **结构化输出**：使用 Pydantic Schema 确保 LLM 返回正确格式
+- **状态格式化**：自动将游戏状态转换为 LLM 可理解的文本
+
+#### 技术细节
+- 所有 LLM 调用使用 LangChain 的 `with_structured_output()` 方法
+- 使用 `SystemMessage` 和 `HumanMessage` 构建消息
+- 支持 DeepSeek-V3 和 OpenAI API
+- Prompt 设计考虑了游戏规则、角色能力和当前状态
+
+---
+
 ## [0.3.0] - 2024-12-29
 
 ### 🎯 角色能力完整实现

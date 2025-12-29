@@ -21,8 +21,8 @@ cyber-werewolf/
 │   ├── agents/            # Agent 实现
 │   │   ├── base_agent.py  # Agent 基类
 │   │   ├── villager.py    # 村民 Agent
-│   │   ├── werewolf.py    # 狼人 Agent
-│   │   └── roles/         # 特殊角色（预言家、女巫、守卫）
+│   │   ├── werewolf.py    # 狼人 Agent（含 LLM 集成）
+│   │   └── roles/         # 特殊角色（预言家、女巫、守卫，含 LLM 集成）
 │   ├── graph/             # LangGraph 工作流
 │   │   ├── game_graph.py      # 工作流主图
 │   │   ├── nodes.py           # 节点实现
@@ -37,6 +37,8 @@ cyber-werewolf/
 │   │   └── actions.py      # Agent 行动指令 Schema
 │   └── utils/              # 工具函数
 │       ├── llm_client.py    # LLM 客户端（DeepSeek/OpenAI）
+│       ├── prompt_builder.py # Prompt 构建工具
+│       ├── agent_factory.py  # Agent 工厂
 │       ├── role_assigner.py # 身份分配
 │       └── validators.py    # 验证器
 ├── tests/                  # 测试代码
@@ -107,8 +109,10 @@ python examples/test_deepseek.py
 - [x] 警长机制
 - [x] 平票重议机制
 - [x] 屠边规则
-- [ ] Agent LLM 集成
-- [ ] 完整技能系统
+- [x] 角色技能系统（预言家、女巫、守卫、狼人）
+- [x] Agent LLM 集成（技能决策）
+- [ ] 发言系统 LLM 集成
+- [ ] 投票系统 LLM 集成
 - [ ] 测试用例完善
 
 ## 技术栈

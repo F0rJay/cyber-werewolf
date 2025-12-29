@@ -63,28 +63,29 @@ class WerewolfAgent(BaseAgent):
         Returns:
             发言内容
         """
-        # TODO: 调用 LLM 生成发言内容
-        # 目前模拟：基于游戏状态生成策略性发言
-        alive_players = [p for p in game_state.get("players", []) if p.is_alive]
-        non_werewolves = [p for p in alive_players if p.role != "werewolf"]
+        # 构建 prompt
+        from ...utils.prompt_builder import build_werewolf_discuss_prompt
+        system_prompt, user_prompt = build_werewolf_discuss_prompt(
+            self.agent_id,
+            self.name,
+            game_state,
+            werewolf_teammates
+        )
         
-        if not non_werewolves:
-            return "所有非狼人玩家已出局，我们即将获胜。"
-        
-        # 模拟发言
-        import random
-        strategies = [
-            "我们应该优先攻击疑似神职的玩家",
-            "今晚我建议攻击玩家X，他可能是预言家",
-            "我们需要保持低调，不要暴露身份",
-        ]
-        return random.choice(strategies)
+        try:
+            # 调用 LLM 生成发言内容
+            response = await self.llm_client.call(system_prompt, user_prompt)
+            return response.strip()
+        except Exception as e:
+            # LLM 调用失败，返回默认发言
+            print(f"⚠️  狼人 {self.name} 频道发言 LLM 调用失败: {e}")
+            return "我们需要讨论今晚的攻击策略。"
     
     async def vote_to_kill(
         self, 
         game_state: Dict[str, Any],
         werewolf_teammates: List[Dict[str, Any]],
-        werewolf_channel_messages: List[str]
+        werewolf_channel_messages: List[Dict[str, Any]]
     ) -> Optional[int]:
         """
         投票决定攻击目标
@@ -92,7 +93,7 @@ class WerewolfAgent(BaseAgent):
         Args:
             game_state: 游戏状态
             werewolf_teammates: 狼人队友列表
-            werewolf_channel_messages: 狼人频道发言记录
+            werewolf_channel_messages: 狼人频道发言记录（字典列表）
         
         Returns:
             目标玩家ID，如果不攻击则返回 None
@@ -103,11 +104,53 @@ class WerewolfAgent(BaseAgent):
         if not targets:
             return None
         
-        # TODO: 调用 LLM 基于讨论和游戏状态决定攻击目标
-        # 目前模拟：随机选择
-        import random
-        target = random.choice(targets)
-        return target.player_id
+        # 构建 prompt
+        from ...utils.prompt_builder import build_werewolf_vote_prompt
+        system_prompt, user_prompt = build_werewolf_vote_prompt(
+            self.agent_id,
+            self.name,
+            game_state,
+            werewolf_teammates,
+            werewolf_channel_messages
+        )
+        
+        # 定义投票决策的 Schema
+        from pydantic import BaseModel, Field
+        from typing import Optional
+        class KillVoteDecision(BaseModel):
+            thought: str = Field(description="推理过程")
+            target_id: Optional[int] = Field(default=None, description="目标玩家ID（如果不攻击则返回None）")
+            confidence: float = Field(description="置信度（0-1）", ge=0.0, le=1.0)
+            reasoning: str = Field(description="决策理由")
+        
+        try:
+            # 获取结构化输出的 LLM
+            structured_llm = self.llm_client.get_structured_llm(KillVoteDecision)
+            
+            # 调用 LLM（使用 LangChain 消息格式）
+            from langchain_core.messages import SystemMessage, HumanMessage
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt)
+            ]
+            decision = await structured_llm.ainvoke(messages)
+            
+            if decision.target_id:
+                # 验证目标玩家是否存在
+                target_player = next(
+                    (p for p in targets if p.player_id == decision.target_id),
+                    None
+                )
+                if target_player:
+                    return decision.target_id
+            
+            return None
+        except Exception as e:
+            # LLM 调用失败，随机选择
+            print(f"⚠️  狼人 {self.name} 投票决策 LLM 调用失败: {e}")
+            import random
+            target = random.choice(targets)
+            return target.player_id
     
     async def decide_self_explode(
         self,
@@ -124,17 +167,37 @@ class WerewolfAgent(BaseAgent):
         Returns:
             是否自爆
         """
-        # 自爆条件：
-        # 1. 可以在发言阶段随时自爆
-        # 2. 自爆后立即进入黑夜，终止发言
+        # 构建 prompt
+        from ...utils.prompt_builder import build_werewolf_explode_prompt
+        system_prompt, user_prompt = build_werewolf_explode_prompt(
+            self.agent_id,
+            self.name,
+            game_state
+        )
         
-        # TODO: 调用 LLM 决定是否自爆
-        # 目前模拟：随机决定（概率较低）
-        import random
-        return random.choice([False, False, False, False, False])  # 20% 概率
+        # 定义自爆决策的 Schema
+        from pydantic import BaseModel, Field
+        class ExplodeDecision(BaseModel):
+            thought: str = Field(description="推理过程")
+            should_explode: bool = Field(description="是否自爆")
+            confidence: float = Field(description="置信度（0-1）", ge=0.0, le=1.0)
+            reasoning: str = Field(description="决策理由")
         
-        # 实际策略可能包括：
-        # - 当身份即将暴露时自爆
-        # - 为了阻止好人投票而自爆
-        # - 为了保护队友而自爆
+        try:
+            # 获取结构化输出的 LLM
+            structured_llm = self.llm_client.get_structured_llm(ExplodeDecision)
+            
+            # 调用 LLM（使用 LangChain 消息格式）
+            from langchain_core.messages import SystemMessage, HumanMessage
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt)
+            ]
+            decision = await structured_llm.ainvoke(messages)
+            
+            return decision.should_explode
+        except Exception as e:
+            # LLM 调用失败，默认不自爆
+            print(f"⚠️  狼人 {self.name} 自爆决策 LLM 调用失败: {e}")
+            return False
 
