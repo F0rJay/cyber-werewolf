@@ -33,9 +33,11 @@
 - `validators.py`: 验证器（带重试机制）
 
 ### `/tests` - 测试代码
-- `test_agents.py`: Agent 测试
-- `test_graph.py`: 工作流测试
-- `test_state.py`: 状态管理测试
+- `test_agents.py`: Agent 测试（所有角色的基础测试）
+- `test_state.py`: 状态管理测试（状态管理器、玩家模型、各种状态字段）
+- `test_graph.py`: 工作流测试（图结构、节点、流程）
+- `test_roles.py`: 角色技能测试（预言家、女巫、守卫、狼人的技能决策）
+- `test_game_rules.py`: 游戏规则测试（身份分配、警长选举、平票处理、发言顺序等）
 
 ### `/examples` - 示例代码
 - `run_game.py`: 完整游戏运行
