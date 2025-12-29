@@ -60,33 +60,33 @@ async def test_structured_output():
     
     client = LLMClient(provider="deepseek")
     structured_llm = client.get_structured_llm(AgentAction)
-        
-        system_prompt = """你是一个狼人杀游戏中的村民。你需要输出结构化的行动指令。
+    
+    system_prompt = """你是一个狼人杀游戏中的村民。你需要输出结构化的行动指令。
 行动类型包括: vote, kill, check, save, guard, skip"""
-        
-        user_prompt = """当前游戏状态：
+    
+    user_prompt = """当前游戏状态：
 - 玩家1: 发言逻辑矛盾，可疑
 - 玩家2: 表现正常
 - 玩家3: 你（村民）
 - 玩家4: 表现正常
 
 请输出你的投票决策。"""
-        
-        print("📤 发送结构化输出请求...")
-        action = await structured_llm.ainvoke([
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ])
-        
-        print("\n📥 结构化输出结果:")
-        print("-" * 50)
-        print(f"推理: {action.thought}")
-        print(f"行动类型: {action.action_type}")
-        print(f"目标: {action.target}")
-        print(f"置信度: {action.confidence}")
-        print(f"理由: {action.reasoning}")
-        print("-" * 50)
-        
+    
+    print("📤 发送结构化输出请求...")
+    action = await structured_llm.ainvoke([
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt}
+    ])
+    
+    print("\n📥 结构化输出结果:")
+    print("-" * 50)
+    print(f"推理: {action.thought}")
+    print(f"行动类型: {action.action_type}")
+    print(f"目标: {action.target}")
+    print(f"置信度: {action.confidence}")
+    print(f"理由: {action.reasoning}")
+    print("-" * 50)
+    
     print("\n✅ 结构化输出测试成功！")
 
 
