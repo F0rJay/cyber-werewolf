@@ -58,6 +58,9 @@ class GameState(TypedDict):
     self_exploded: Optional[int]  # 自爆的玩家ID
     # 遗言相关
     last_words: Dict[int, str]  # 遗言 {player_id: last_word}
+    # 初始角色统计（用于游戏结束判定）
+    initial_gods_count: int  # 初始神职数量
+    initial_villagers_count: int  # 初始村民数量
 
 
 class StateManager:
@@ -100,6 +103,9 @@ class StateManager:
             "guard_protected_tonight": None,
             "self_exploded": None,
             "last_words": {},
+            # 记录初始角色统计
+            "initial_gods_count": len([p for p in players if p.role in ["seer", "witch", "guard"]]),
+            "initial_villagers_count": len([p for p in players if p.role == "villager"]),
         }
         return self.state
     

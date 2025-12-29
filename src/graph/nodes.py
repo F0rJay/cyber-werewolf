@@ -277,21 +277,9 @@ async def night_phase_node(state: GameState) -> Dict[str, Any]:
     # 处理女巫解药和毒药效果（已在女巫行动中处理）
     # 注意：守卫不能防御女巫毒药
     
-    # 执行夜晚结果：淘汰被杀的玩家
-    updated_players = []
-    for p in state["players"]:
-        if p.player_id in killed_players:
-            updated_p = Player(
-                player_id=p.player_id,
-                name=p.name,
-                role=p.role,
-                is_alive=False,
-                vote_target=p.vote_target,
-                is_sheriff=p.is_sheriff
-            )
-            updated_players.append(updated_p)
-        else:
-            updated_players.append(p)
+    # 注意：夜晚阶段不立即淘汰玩家，只记录被杀玩家
+    # 玩家将在"公布出局玩家"阶段才真正出局
+    # 这样被刀的玩家在第二天白天仍可以参与警长竞选、发言、投票等，直到公布出局
     
     # 记录夜晚行动
     history_entry = {
@@ -305,11 +293,10 @@ async def night_phase_node(state: GameState) -> Dict[str, Any]:
     current_history = state.get("history", [])
     current_history.append(history_entry)
     
-    # 准备返回的更新
+    # 准备返回的更新（不更新players，保持玩家存活状态）
     updates = {
         "night_actions": night_actions,
         "history": current_history,
-        "players": updated_players,
         "current_phase": "day",
         "guard_protected": state.get("guard_protected_tonight"),  # 更新为上一晚
         "guard_protected_tonight": guard_protected_tonight,  # 今晚守护的
@@ -374,88 +361,58 @@ async def announce_death_node(state: GameState) -> Dict[str, Any]:
                     print(f"      ⚠️  {player.name} 夜里出局，没有遗言（只能发动特殊技能）")
                     # TODO: 实现特殊技能发动（如女巫毒药、守卫守护等）
                 
-                # 如果出局的是警长，处理警长移交
-                if player.is_sheriff:
-                    print(f"      👮 警长 {player.name} 出局，需要处理警徽")
-                    from ..utils.agent_factory import create_agent_by_role
-                    agent = create_agent_by_role(player.player_id, player.name, player.role)
-                    transfer_target = await agent.decide_sheriff_transfer(state)
-                    
-                    if transfer_target:
-                        # 移交警徽
-                        transfer_info = {
-                            "from_id": pid,
-                            "to_id": transfer_target,
-                            "destroyed": False
-                        }
-                        target_player = next((p for p in state["players"] if p.player_id == transfer_target), None)
-                        if target_player:
-                            print(f"      ✅ 警长 {player.name} 将警徽移交给 {target_player.name} (玩家{transfer_target})")
-                            # 更新玩家状态：原警长失去警徽，新玩家成为警长
-                            updated_players = []
-                            for p in state["players"]:
-                                if p.player_id == pid:
-                                    # 原警长失去警徽
-                                    updated_p = Player(
-                                        player_id=p.player_id,
-                                        name=p.name,
-                                        role=p.role,
-                                        is_alive=p.is_alive,
-                                        vote_target=p.vote_target,
-                                        is_sheriff=False
-                                    )
-                                    updated_players.append(updated_p)
-                                elif p.player_id == transfer_target:
-                                    # 新玩家成为警长
-                                    updated_p = Player(
-                                        player_id=p.player_id,
-                                        name=p.name,
-                                        role=p.role,
-                                        is_alive=p.is_alive,
-                                        vote_target=p.vote_target,
-                                        is_sheriff=True
-                                    )
-                                    updated_players.append(updated_p)
-                                else:
-                                    updated_players.append(p)
-                            return {
-                                "last_words": last_words,
-                                "players": updated_players,
-                                "sheriff_transfer": transfer_info
-                            }
-                    else:
-                        # 销毁警徽
-                        transfer_info = {
-                            "from_id": pid,
-                            "to_id": None,
-                            "destroyed": True
-                        }
-                        print(f"      ❌ 警长 {player.name} 销毁警徽，本局没有警长")
-                        # 更新玩家状态：警长失去警徽
-                        updated_players = []
-                        for p in state["players"]:
-                            if p.player_id == pid:
-                                updated_p = Player(
-                                    player_id=p.player_id,
-                                    name=p.name,
-                                    role=p.role,
-                                    is_alive=p.is_alive,
-                                    vote_target=p.vote_target,
-                                    is_sheriff=False
-                                )
-                                updated_players.append(updated_p)
-                            else:
-                                updated_players.append(p)
-                        return {
-                            "last_words": last_words,
-                            "players": updated_players,
-                            "sheriff_transfer": transfer_info
-                        }
-        
-        return {"last_words": last_words}
-    else:
-        print("  ✅ 平安夜（无人出局）")
+    # 处理警长移交（如果有警长出局）
+    sheriff_transfer_info = None
+    for pid in killed_players:
+        player = next((p for p in state["players"] if p.player_id == pid), None)
+        if player and player.is_sheriff:
+            print(f"      👮 警长 {player.name} 出局，需要处理警徽")
+            from ..utils.agent_factory import create_agent_by_role
+            agent = create_agent_by_role(player.player_id, player.name, player.role)
+            transfer_target = await agent.decide_sheriff_transfer(state)
+            
+            if transfer_target:
+                # 移交警徽
+                sheriff_transfer_info = {
+                    "from_id": pid,
+                    "to_id": transfer_target,
+                    "destroyed": False
+                }
+                target_player = next((p for p in updated_players if p.player_id == transfer_target), None)
+                if target_player:
+                    print(f"      ✅ 警长 {player.name} 将警徽移交给 {target_player.name} (玩家{transfer_target})")
+                    # 更新玩家状态：新玩家成为警长
+                    for i, p in enumerate(updated_players):
+                        if p.player_id == transfer_target:
+                            updated_players[i] = Player(
+                                player_id=p.player_id,
+                                name=p.name,
+                                role=p.role,
+                                is_alive=p.is_alive,
+                                vote_target=p.vote_target,
+                                is_sheriff=True
+                            )
+                            break
+            else:
+                # 销毁警徽
+                sheriff_transfer_info = {
+                    "from_id": pid,
+                    "to_id": None,
+                    "destroyed": True
+                }
+                print(f"      ❌ 警长 {player.name} 销毁警徽，本局没有警长")
     
+    # 返回更新的玩家列表和相关信息
+    result = {
+        "players": updated_players,
+        "last_words": last_words,
+    }
+    if sheriff_transfer_info:
+        result["sheriff_transfer"] = sheriff_transfer_info
+    
+    return result
+else:
+    print("  ✅ 平安夜（无人出局）")
     return {}
 
 

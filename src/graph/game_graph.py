@@ -27,8 +27,20 @@ def check_game_end(state: GameState) -> Literal["end", "continue"]:
     villagers = [p for p in alive_players if p.role == "villager"]
     gods = [p for p in alive_players if p.role in ["seer", "witch", "guard"]]
     
-    # 屠边规则
-    if len(werewolves) == 0 or len(villagers) == 0 or len(gods) == 0:
+    # 获取初始角色统计
+    initial_gods_count = state.get("initial_gods_count", 0)
+    initial_villagers_count = state.get("initial_villagers_count", 0)
+    
+    # 屠边规则：只有当初始存在该阵营时，该阵营全部出局才判定游戏结束
+    if len(werewolves) == 0:
+        return "end"
+    
+    # 如果初始有村民，且村民全部出局，则游戏结束
+    if initial_villagers_count > 0 and len(villagers) == 0:
+        return "end"
+    
+    # 如果初始有神职，且神职全部出局，则游戏结束
+    if initial_gods_count > 0 and len(gods) == 0:
         return "end"
     
     return "continue"
