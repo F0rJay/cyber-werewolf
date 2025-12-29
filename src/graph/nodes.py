@@ -602,7 +602,7 @@ async def discussion_node(state: GameState) -> Dict[str, Any]:
             random.shuffle(alive_players)
             # 注意：警长不能自爆（即使警长是狼人）
         else:
-        # 无警长，随机顺序
+            # 无警长，随机顺序
         random.shuffle(alive_players)
     
     discussions = []
