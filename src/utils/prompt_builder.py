@@ -414,23 +414,11 @@ def build_werewolf_explode_prompt(
     players = game_state.get("players", [])
     alive_players = [p for p in players if p.is_alive]
     
-    # 检查是否是警长
-    players = game_state.get("players", [])
-    current_player = next((p for p in players if p.player_id == agent_id), None)
-    is_sheriff = current_player and current_player.is_sheriff
-    
-    if is_sheriff:
-        system_prompt = """你是狼人杀游戏中的狼人，同时你也是警长。
-
-重要规则：
-- 警长不能自爆（即使警长是狼人）
-- 你必须继续游戏，不能通过自爆来终止发言
-
-请继续正常发言，不要考虑自爆。"""
-    else:
-        system_prompt = """你是狼人杀游戏中的狼人。你可以在发言阶段自爆。
+    system_prompt = """你是狼人杀游戏中的狼人。你可以在发言阶段自爆。
 
 自爆规则：
+- 只有狼人可以自爆（与是否警长无关）
+- 如果你当选了警长，你仍然可以自爆（因为你是狼人）
 - 自爆后立即出局
 - 自爆后发言终止，直接进入黑夜
 - 自爆通常用于：

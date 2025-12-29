@@ -700,8 +700,8 @@ async def discussion_node(state: GameState) -> Dict[str, Any]:
         # 创建对应角色的 Agent
         agent = create_agent_by_role(player.player_id, player.name, player.role)
         
-        # 只有狼人可以自爆，且警长不能自爆
-        if player.role == "werewolf" and not player.is_sheriff:
+        # 只有狼人可以自爆（与是否警长无关）
+        if player.role == "werewolf":
             # 调用狼人 Agent 决定是否自爆
             will_explode = await agent.decide_self_explode(state, player.player_id)
             if will_explode:
