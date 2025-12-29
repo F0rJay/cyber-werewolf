@@ -172,21 +172,38 @@ class StructuredLLMWrapper:
         for field_name, field_info in schema_fields.items():
             if field_name not in mapped_data:
                 # 检查是否有默认值
+                default = None
                 if hasattr(field_info, 'default'):
                     default = field_info.default
-                    if default is not None:
+                    # 检查是否是 Pydantic 的默认值标记
+                    from pydantic import PydanticUndefined
+                    if default is not PydanticUndefined and default is not None:
                         mapped_data[field_name] = default
-                    elif hasattr(field_info, 'default_factory'):
-                        mapped_data[field_name] = field_info.default_factory()
+                        continue
+                
                 # 如果没有默认值且字段是必需的，设置合理的默认值
-                elif field_name == 'thought' and 'reasoning' in mapped_data:
-                    mapped_data[field_name] = mapped_data.get('reasoning', '')
-                elif field_name == 'reasoning' and 'thought' in mapped_data:
-                    mapped_data[field_name] = mapped_data.get('thought', '')
+                if field_name == 'thought':
+                    # 优先使用 reasoning，否则使用空字符串
+                    mapped_data[field_name] = mapped_data.get('reasoning', mapped_data.get('reason', ''))
+                elif field_name == 'reasoning':
+                    # 优先使用 thought，否则使用 reason
+                    mapped_data[field_name] = mapped_data.get('thought', mapped_data.get('reason', ''))
                 elif field_name == 'confidence':
                     mapped_data[field_name] = 0.5
                 elif field_name == 'target' and mapped_data.get('action_type') in ['skip', 'explode']:
                     mapped_data[field_name] = None
+                elif field_name == 'content' and 'text' in mapped_data:
+                    mapped_data[field_name] = mapped_data.get('text', mapped_data.get('message', ''))
+                else:
+                    # 对于字符串类型，使用空字符串
+                    if hasattr(field_info, 'annotation'):
+                        ann = str(field_info.annotation)
+                        if 'str' in ann or 'String' in ann:
+                            mapped_data[field_name] = ''
+                        elif 'int' in ann or 'Integer' in ann:
+                            mapped_data[field_name] = 0
+                        elif 'float' in ann:
+                            mapped_data[field_name] = 0.0
         
         return mapped_data
     
