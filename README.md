@@ -88,10 +88,18 @@ python examples/run_game.py
 # 测试 DeepSeek API 连接
 python examples/test_deepseek.py
 
-# 运行所有测试用例
+# 运行所有测试用例（推荐）
 python run_tests.py
 # 或使用 Shell 脚本
 ./run_tests.sh
+
+# 测试脚本功能：
+# - 显示所有测试用例列表
+# - 实时显示测试执行过程
+# - 按文件分组显示测试结果
+# - 显示每个测试的执行状态（通过/失败/跳过/错误）
+# - 显示测试统计信息（总数、通过率等）
+# - 显示失败测试的详细错误信息
 ```
 
 ## 文档

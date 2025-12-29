@@ -43,6 +43,15 @@
 - `run_game.py`: 完整游戏运行
 - `test_deepseek.py`: DeepSeek API 连接测试
 
+### 根目录脚本
+- `run_tests.py`: 测试运行脚本（Python 版本）
+  - 一键执行所有测试用例
+  - 显示测试列表、执行过程、结果摘要和统计信息
+  - 自动显示失败测试的详细错误信息
+- `run_tests.sh`: 测试运行脚本（Shell 版本）
+  - 功能与 Python 版本相同
+  - 适合在 Shell 环境中使用
+
 ### `/docs` - 文档
 - `LLM_CONFIG.md`: LLM 配置详细说明
 - `QUICKSTART.md`: 快速开始指南
